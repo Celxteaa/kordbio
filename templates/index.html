@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KordBio</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    
+    <style>
+        body { font-family: 'VT323', monospace; background: #0a0a0a; color: #fff; overflow-x: hidden; }
+        .pixel-card { border: 4px solid #27272a; background: #09090b; box-shadow: 8px 8px 0px #000; }
+        .btn-pixel { border-bottom: 4px solid #111; border-right: 4px solid #111; transition: 0.1s; cursor: pointer; display: inline-block; }
+        .btn-pixel:active { transform: translate(2px, 2px); border: 0; }
+        
+        /* Toast Alert */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .pixel-toast {
+            border: 4px solid #fff; background: #000; padding: 12px 20px; margin-bottom: 8px;
+            font-size: 1.2rem; text-transform: uppercase; box-shadow: 6px 6px 0px #111;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        .toast-success { border-color: #22c55e; color: #22c55e; }
+        .toast-error { border-color: #ef4444; color: #ef4444; }
+        .toast-warning { border-color: #f59e0b; color: #f59e0b; }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 9998; display: none;
+            backdrop-filter: blur(4px);
+        }
+
+        /* --- Styling Editor Kode Celestia (Fixed Overflow) --- */
+        pre[class*="language-"] {
+            background: #050505 !important;
+            border: 2px solid #333 !important;
+            box-shadow: 6px 6px 0px #000;
+            padding: 2.5em 1em 1em 1em !important;
+            margin: 15px 0 !important;
+            position: relative;
+            
+            overflow-x: auto !important;
+            white-space: pre !important;
+            word-wrap: normal !important;
+            word-break: normal !important;
+        }
+
+        code[class*="language-"] { 
+            font-family: 'Consolas', 'Monaco', monospace !important; 
+            font-size: 1rem !important; 
+            text-shadow: none !important;
+            display: block;
+            min-width: 100%;
+        }
+
+        #ai-out {
+            word-wrap: break-word;
+        }
+
+        .copy-btn {
+            position: absolute; top: 5px; right: 5px;
+            background: #22c55e; color: #000; border: none;
+            padding: 2px 10px; font-size: 0.8rem; font-weight: bold;
+            cursor: pointer; z-index: 10; font-family: 'VT323';
+            text-transform: uppercase;
+        }
+        .copy-btn:hover { background: #4ade80; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border: 2px solid #0a0a0a; }
+
+        /* Perbaikan untuk teks panjang di Feed */
+        .post-content {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <div id="modal-overlay" onclick="closeModal()"></div>
+
+    <div class="toast-container" id="toast-box">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="pixel-toast toast-{{ category }}">>> {{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
+
+    <nav class="w-64 border-r-4 border-zinc-900 p-6 flex flex-col gap-6 sticky h-screen top-0 bg-black">
+        <h1 class="text-4xl font-bold text-green-500 italic uppercase">KORDBIO</h1>
+        <div class="flex flex-col gap-4 text-2xl">
+            <a href="/" class="text-green-500 hover:underline">> HOME_FEED</a>
+            {% if user %}
+            <a href="/dashboard" class="hover:text-blue-400">> DASHBOARD</a>
+            <a href="/messages" class="hover:text-yellow-400">> DIRECT_MESSAGES</a>
+            <a href="/settings" class="hover:text-blue-400">> UI_SETTINGS</a>
+            <a href="/logout" class="text-red-500 mt-10">/TERMINATE_SESSION</a>
+            {% else %}
+            <a href="/login" class="bg-white text-black p-2 text-center font-bold">LOGIN_SYSTEM</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-2xl mx-auto p-8 w-full">
+        {% if user %}
+        <div class="border-4 border-blue-600 p-4 mb-10 bg-zinc-950 shadow-[8px_8px_0px_#111]">
+            <h2 class="text-blue-400 mb-2 font-bold uppercase tracking-tighter">> AI_CELESTIA_CORTEX</h2>
+            <div id="ai-out" class="min-h-[6rem] max-h-[600px] overflow-y-auto mb-4 text-white border-b border-zinc-800 text-xl leading-tight italic">
+                Awaiting neural input...
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="ai-in" placeholder="Ask Celestia for code or tech info..." 
+                       class="flex-grow bg-black p-2 border border-zinc-700 outline-none text-xl focus:border-blue-500 text-white" 
+                       onkeydown="if(event.key==='Enter') askAI()">
+                <button onclick="askAI()" class="bg-blue-600 px-6 font-bold btn-pixel uppercase text-white">EXEC</button>
+            </div>
+        </div>
+
+        <form action="{{ url_for('action_create_post') }}" method="POST" class="mb-12 border-4 border-zinc-800 p-4 bg-zinc-900 shadow-[8px_8px_0px_#111]">
+            <h2 class="text-zinc-500 mb-2 uppercase tracking-widest text-sm">-- BROADCAST_NEW_ENTRY --</h2>
+            <textarea name="content" class="w-full bg-black p-3 outline-none h-24 border-2 border-zinc-800 text-2xl focus:border-green-500 text-white" placeholder="Share your log update..." required></textarea>
+            <button class="mt-2 bg-green-600 px-8 py-1 font-bold text-black uppercase btn-pixel text-xl">SEND_TO_FEED</button>
+        </form>
+        {% endif %}
+
+        <div class="space-y-12">
+            <h2 class="text-zinc-700 uppercase tracking-[0.5em] text-center text-sm">-- GLOBAL_SYSTEM_LOGS --</h2>
+            {% for post in posts %}
+            <div class="relative border-l-4 border-zinc-800 pl-6 py-2 group overflow-hidden">
+                <div class="flex items-center gap-3 mb-2 flex-wrap">
+                    <a href="/{{ post.username }}" class="text-green-400 text-2xl font-bold uppercase hover:underline">@{{ post.username }}</a>
+                    
+                    {% if post.is_premium %}
+                    <span class="text-yellow-500 text-xs px-1 border border-yellow-500 font-bold tracking-tighter">★PREMIUM</span>
+                    {% endif %}
+                    
+                    {% if user and user.username != post.username %}
+                    <a href="/chat/{{ post.username }}" class="text-xs bg-zinc-800 border border-zinc-700 px-2 py-0.5 text-zinc-400 hover:text-white hover:border-blue-500 transition-all uppercase italic">
+                        [ INITIATE_CHAT_LINK ]
+                    </a>
+                    {% endif %}
+                </div>
+
+                <p class="text-3xl post-content mb-4">{{ post.content }}</p>
+                
+                <div class="flex justify-between items-center text-zinc-700 text-sm">
+                    <span>{{ post.timestamp }}</span>
+                    {% if user and user.id == post.user_id %}
+                    <button data-url="{{ url_for('action_delete_post', id=post.id) }}" 
+                            onclick="handleDelete(this)" 
+                            class="text-red-900 hover:text-red-500 uppercase font-bold transition-colors">
+                        [ DELETE_ENTRY ]
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="py-20 text-center">
+                <p class="text-zinc-600 italic text-2xl">NO_POSTS_FOUND_IN_DATABASE</p>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+
+    <script>
+    function initToasts() {
+        const toasts = document.querySelectorAll('.pixel-toast');
+        toasts.forEach(t => {
+            setTimeout(() => {
+                t.style.transition = "0.5s";
+                t.style.opacity = "0";
+                setTimeout(() => t.remove(), 500);
+            }, 4000);
+        });
+    }
+    initToasts();
+
+    function askAI() {
+        const pin = document.getElementById('ai-in');
+        const out = document.getElementById('ai-out');
+        const userPrompt = pin.value.trim();
+        
+        if(!userPrompt) return;
+        
+        pin.value = ''; 
+        out.innerHTML = ">> ANALYZING_SYSTEM_DATA...";
+
+        fetch('/api/ai', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({prompt: userPrompt})
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('NETWORK_RESPONSE_NOT_OK');
+            return response.json();
+        })
+        .then(data => {
+            let rawResponse = data.response || ">> ERROR: NO_RESPONSE_FROM_CORE";
+            const formattedResponse = rawResponse.replace(/```(\w+)?([\s\S]*?)```/g, (match, lang, code) => {
+                const language = lang || 'python';
+                return `
+                    <div style="position:relative">
+                        <button class="copy-btn" onclick="copyCode(this)">COPY.EXE</button>
+                        <pre class="language-${language}"><code class="language-${language}">${code.trim()}</code></pre>
+                    </div>`;
+            });
+            out.innerHTML = formattedResponse;
+            setTimeout(() => {
+                document.querySelectorAll('pre code').forEach((el) => {
+                    Prism.highlightElement(el);
+                });
+            }, 50);
+        })
+        .catch(error => {
+            console.error('AI_FETCH_ERROR:', error);
+            out.innerHTML = ">> CRITICAL_ERROR: SYSTEM_OFFLINE_OR_REJECTED";
+        });
+    }
+
+    function copyCode(btn) {
+        const pre = btn.nextElementSibling;
+        const codeText = pre.querySelector('code').innerText;
+        navigator.clipboard.writeText(codeText).then(() => {
+            btn.innerText = "COPIED!";
+            setTimeout(() => btn.innerText = "COPY.EXE", 2000);
+        });
+    }
+
+    function handleDelete(element) {
+        const url = element.getAttribute('data-url');
+        confirmErase(url);
+    }
+
+    function confirmErase(deleteUrl) {
+        const overlay = document.getElementById('modal-overlay');
+        overlay.style.display = 'block';
+        const oldModal = document.getElementById('active-modal');
+        if(oldModal) oldModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = "active-modal";
+        modal.className = 'pixel-toast toast-warning fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-red-600 z-[9999] text-center w-80';
+        modal.innerHTML = `
+            <p class="mb-6">CRITICAL: WIPE DATA FROM FEED? THIS ACTION IS IRREVERSIBLE.</p>
+            <div class="flex gap-4 justify-center">
+                <a href="${deleteUrl}" class="bg-red-600 text-white px-4 py-1 btn-pixel font-bold">[ YES_ERASE ]</a>
+                <button onclick="closeModal()" class="bg-zinc-800 text-white px-4 py-1 btn-pixel font-bold">[ CANCEL ]</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('active-modal');
+        const overlay = document.getElementById('modal-overlay');
+        if(modal) modal.remove();
+        overlay.style.display = 'none';
+    }
+    </script>
+</body>
+</html>

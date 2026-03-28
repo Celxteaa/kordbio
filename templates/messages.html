@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inbox: TERMINAL_MESSAGES</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'VT323', monospace; background: #050505; color: #22c55e; }
+        .pixel-border { border: 4px solid #18181b; }
+        .pixel-border:hover { border-color: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
+        .unread-dot {
+            width: 10px; height: 10px;
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+            border-radius: 1px;
+        }
+        .truncate-pixel {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 400px;
+        }
+        /* Animasi kursor retro */
+        .cursor-blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="p-8 flex justify-center min-h-screen">
+    <div class="w-full max-w-2xl">
+        
+        <div class="flex justify-between items-end border-b-2 border-zinc-800 pb-4 mb-8">
+            <div>
+                <h1 class="text-5xl font-bold uppercase tracking-tighter">Inbox_Logs</h1>
+                <p class="text-xl opacity-60">Active_Nodes: [{{ chat_list|length }}]</p>
+            </div>
+            <a href="/" class="text-2xl hover:underline italic">[ RETURN_TO_BASE ]</a>
+        </div>
+
+        <div class="space-y-4">
+            {% for chat in chat_list %}
+            <div class="relative group">
+                <form action="{{ url_for('action_delete_chat', target_id=chat.target_id) }}" method="POST" class="absolute -top-2 -right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button type="submit" class="bg-red-600 text-black px-2 py-0.5 text-xs font-bold hover:bg-white hover:text-red-600 border border-red-600">
+                        PURGE_DATA
+                    </button>
+                </form>
+
+                <a href="{{ url_for('chat', username=chat.username) }}" class="block">
+                    <div class="pixel-border bg-zinc-950 p-5 flex items-center justify-between transition-all">
+                        <div class="flex flex-col gap-1 overflow-hidden">
+                            <div class="flex items-center gap-3">
+                                <span class="text-zinc-700 font-bold text-xl group-hover:text-green-500">[ID]</span>
+                                
+                                <h2 class="text-3xl font-bold leading-none group-hover:text-white transition-colors">
+                                    {{ chat.username.upper() }}
+                                </h2>
+
+                                {% if chat.unread_count > 0 %}
+                                    <div class="unread-dot animate-pulse"></div>
+                                    <span class="text-xs text-red-500 uppercase tracking-widest">New_Incoming</span>
+                                {% endif %}
+                            </div>
+
+                            <p class="text-lg text-zinc-500 italic truncate-pixel uppercase pl-8">
+                                <span class="text-zinc-800 mr-2">>></span>{{ chat.last_msg }}
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col items-end gap-1 shrink-0">
+                            <span class="text-sm font-mono text-zinc-600 bg-zinc-900 px-2 py-1">
+                                T_STAMP: {{ chat.timestamp[11:16] }}
+                            </span>
+                            <span class="text-xl opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">
+                                ACCESS_NODE <span class="cursor-blink">_</span>
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% else %}
+            <div class="py-20 text-center border-4 border-dashed border-zinc-900 opacity-30">
+                <p class="text-3xl italic">-- NO_ACTIVE_COMMUNICATION_NODES --</p>
+                <p class="text-xl">Initiate handshake via user profiles.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-12 text-center text-sm opacity-20 uppercase tracking-[0.2em] border-t border-zinc-900 pt-4">
+            SYSTEM_ID: {{ user.username }}@KORD_BIO // SYNC_TIME: {{ now }}
+        </div>
+    </div>
+</body>
+</html>

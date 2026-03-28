@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KordBio | UPGRADE_NEURAL_LINK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        body { font-family: 'VT323', monospace; background-color: #050505; color: #22c55e; }
+        .pixel-border { border: 4px solid #22c55e; box-shadow: 5px 5px 0px #065f46; }
+        .card:hover { transform: translateY(-5px); border-color: #4ade80; }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-12 border-b-2 border-dashed border-green-900 pb-4">
+            <h1 class="text-4xl uppercase tracking-widest">[ SYSTEM_UPGRADE_CENTER ]</h1>
+            <p class="text-green-700 mt-2">Current Status: {{ '[CORE_OVERLORD]' if user.is_premium == 2 else ('[BIT_CITIZEN]' if user.is_premium == 1 else '[FREE_USER]') }}</p>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="card pixel-border p-6 bg-black flex flex-col justify-between transition-all">
+                <div>
+                    <h2 class="text-2xl mb-2 text-white">>> BIT_CITIZEN</h2>
+                    <p class="text-xl text-yellow-500 mb-4">IDR 15.000</p>
+                    <ul class="space-y-2 text-lg">
+                        <li>[+] Custom Profile Glow</li>
+                        <li>[+] Unique Prefix Label</li>
+                        <li>[+] Verified Pixel Badge</li>
+                        <li class="text-green-900">[!] AI_CELESTIA_CORTEX Limit: 5/day</li>
+                    </ul>
+                </div>
+                <a href="{{ url_for('upgrade_qris', tier=1) }}" class="mt-8 bg-green-600 text-black text-center py-2 hover:bg-green-400 font-bold">INITIATE_UPGRADE</a>
+            </div>
+
+            <div class="card pixel-border p-6 bg-black border-purple-500 flex flex-col justify-between transition-all" style="box-shadow: 5px 5px 0px #4c1d95;">
+                <div>
+                    <h2 class="text-2xl mb-2 text-purple-400">>> CORE_OVERLORD</h2>
+                    <p class="text-xl text-yellow-500 mb-4">IDR 50.000</p>
+                    <ul class="space-y-2 text-lg">
+                        <li>[+] All Bit Citizen Features</li>
+                        <li>[+] <span class="text-purple-400">UNLIMITED</span> AI_CELESTIA_CORTEX</li>
+                        <li>[+] Priority Access</li>
+                        <li>[+] Secret Features</li>
+                    </ul>
+                </div>
+                <a href="{{ url_for('upgrade_qris', tier=2) }}" class="mt-8 bg-purple-600 text-white text-center py-2 hover:bg-purple-400 font-bold">ASCEND_NOW</a>
+            </div>
+        </div>
+
+        <div class="mt-12 text-center">
+            <a href="{{ url_for('dashboard') }}" class="text-green-800 hover:text-green-400 underline uppercase tracking-tighter">< RETURN_TO_DASHBOARD</a>
+        </div>
+    </div>
+</body>
+</html>

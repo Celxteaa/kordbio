@@ -1,0 +1,14 @@
+{
+  "id": {
+    "verified": "TERVERIFIKASI",
+    "get_kord": "BUAT KORDBIO KAMU",
+    "buy_premium": "UPGRADE KE PREMIUM (POWER KORDBIO)",
+    "footer": "Powered by KordBio"
+  },
+  "en": {
+    "verified": "VERIFIED",
+    "get_kord": "GET YOUR KORDBIO",
+    "buy_premium": "UPGRADE TO PREMIUM (POWER KORDBIO)",
+    "footer": "Powered by KordBio"
+  }
+}

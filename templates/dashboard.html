@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | KordBio</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'VT323', monospace; background: #000; color: #fff; overflow-x: hidden; }
+        .btn-pixel { border-bottom: 4px solid #111; border-right: 4px solid #111; transition: 0.1s; cursor: pointer; display: inline-block; }
+        .btn-pixel:active { transform: translate(2px, 2px); border: 0; }
+        
+        /* Toast Alert Style */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .pixel-toast {
+            border: 4px solid #fff; background: #000; padding: 12px 20px; margin-bottom: 8px;
+            font-size: 1.2rem; text-transform: uppercase; box-shadow: 6px 6px 0px #111;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        .toast-success { border-color: #22c55e; color: #22c55e; }
+        .toast-error { border-color: #ef4444; color: #ef4444; }
+        .toast-warning { border-color: #f59e0b; color: #f59e0b; }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 9998; display: none;
+            backdrop-filter: blur(4px);
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border: 2px solid #0a0a0a; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <div id="modal-overlay" onclick="closeModal()"></div>
+
+    <div class="toast-container" id="toast-box">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="pixel-toast toast-{{ category }}">>> {{ message }}</div>
+            {% endfor %}
+          {% endif %} {% endwith %}
+    </div>
+
+    <nav class="w-64 border-r-4 border-zinc-900 p-6 flex flex-col gap-4 sticky h-screen top-0 bg-black">
+        <h1 class="text-3xl font-bold text-blue-500 uppercase italic">Control_Panel</h1>
+        <div class="flex flex-col gap-2 text-2xl">
+            <a href="/" class="hover:text-blue-400">> BACK_TO_FEED</a>
+            <a href="/settings" class="hover:text-green-400">> PROFILE_SETTINGS</a>
+            <a href="/logout" class="text-red-500 mt-10">/LOGOUT</a>
+            
+            {% if user.username == 'admin cel' %}
+            <div class="mt-4 p-2 border-2 border-dashed border-yellow-500 bg-yellow-900/20">
+                <p class="text-yellow-500 text-xs mb-2">// ADMIN_PRIVILEGE_DETECTED</p>
+                <a href="{{ url_for('admin_verify') }}" 
+                class="block text-center bg-yellow-600 text-black font-bold py-1 hover:bg-yellow-400">
+                OPEN_VERIFICATION_PANEL
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="flex-grow p-10 max-w-5xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+            <div class="border-4 border-zinc-800 p-6 bg-zinc-900 shadow-[6px_6px_0px_#111]">
+                <h2 class="text-2xl text-zinc-500 uppercase">Account_Status</h2>
+                <div class="py-2">
+                    <p class="text-4xl font-bold">
+                        {% if user.is_premium == 2 %}
+                            <span class="text-yellow-500">★ CORE_OVERLORD</span>
+                        {% elif user.is_premium == 1 %}
+                            <span class="text-blue-400">★ BIT_CITIZEN</span>
+                        {% else %}
+                            <span class="text-zinc-400">FREE_USER</span>
+                        {% endif %}
+                    </p>
+                </div>
+                
+                {# Tombol diarahkan ke /upgrade (Landing Page Pemilihan Paket) #}
+                {% if user.is_premium < 2 %}
+                <a href="{{ url_for('upgrade_landing') }}" class="mt-4 inline-block bg-yellow-500 text-black px-4 py-1 font-bold uppercase text-xl btn-pixel">
+                    [ {% if user.is_premium == 1 %}EVOLVE_TO_OVERLORD{% else %}RUN_UPGRADE.EXE{% endif %} ]
+                </a>
+                {% endif %}
+                
+                <p class="mt-4 text-xl">AI Usage: <span class="text-blue-400">{{ ai_count }}{{ '/5' if not user.is_premium else ' (UNLIMITED)' }}</span></p>
+            </div>
+
+            <div class="border-4 border-zinc-800 p-6 bg-zinc-900 shadow-[6px_6px_0px_#111]">
+                <h2 class="text-2xl text-zinc-500 uppercase mb-4">New_Project_Deployment</h2>
+                <form action="{{ url_for('dashboard') }}" method="POST" class="space-y-3">
+                    <input type="text" name="title" placeholder="Title" class="w-full bg-black border border-zinc-700 p-2 text-xl outline-none focus:border-blue-500 text-white" required>
+                    <input type="text" name="desc" placeholder="Description" class="w-full bg-black border border-zinc-700 p-2 text-xl outline-none focus:border-blue-500 text-white" required>
+                    <input type="url" name="link" placeholder="https://..." class="w-full bg-black border border-zinc-700 p-2 text-xl outline-none focus:border-blue-500 text-white" required>
+                    <button type="submit" class="w-full bg-blue-600 p-2 font-bold uppercase hover:bg-blue-400 text-white transition-colors btn-pixel">DEPLOY_PROJECT</button>
+                </form>
+            </div>
+        </div>
+
+        <h2 class="text-3xl mb-4 italic underline uppercase tracking-widest">Manage_Portfolio</h2>
+        <div class="space-y-4">
+            {% for p in projects %}
+            <div class="flex justify-between items-center border-2 border-zinc-800 p-4 hover:bg-zinc-900 transition-colors bg-black">
+                <div>
+                    <h3 class="text-2xl font-bold text-green-400 uppercase">{{ p.title }}</h3>
+                    <p class="text-zinc-500 italic text-lg">{{ p.description }}</p>
+                </div>
+                <div class="flex gap-4">
+                    <a href="{{ p.link }}" target="_blank" class="text-blue-500 hover:text-white underline text-xl">[VIEW]</a>
+                    
+                    <button type="button" 
+                            data-delete-url="{{ url_for('action_delete_project', id=p.id) }}"
+                            onclick="handleDeleteClick(this)" 
+                            class="text-red-500 hover:text-red-300 font-bold text-xl">
+                        [DELETE]
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="py-20 text-center border-4 border-dashed border-zinc-900 opacity-30">
+                <p class="text-3xl italic">-- NO_PROJECTS_DEPLOYED_YET --</p>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <script>
+    // System Toast Auto-Hide
+    function initToasts() {
+        const toasts = document.querySelectorAll('.pixel-toast');
+        toasts.forEach(t => {
+            setTimeout(() => {
+                t.style.transition = "0.5s";
+                t.style.opacity = "0";
+                setTimeout(() => t.remove(), 500);
+            }, 4000);
+        });
+    }
+    initToasts();
+
+    function handleDeleteClick(btn) {
+        const url = btn.getAttribute('data-delete-url');
+        if (url) {
+            confirmErase(url);
+        }
+    }
+
+    // Custom Pixel Confirmation Modal
+    function confirmErase(deleteUrl) {
+        const overlay = document.getElementById('modal-overlay');
+        overlay.style.display = 'block';
+
+        const oldModal = document.getElementById('active-modal');
+        if(oldModal) oldModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = "active-modal";
+        modal.className = 'pixel-toast toast-warning fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-red-600 z-[9999] text-center w-80';
+        modal.innerHTML = `
+            <p class="mb-6">CRITICAL: WIPE PROJECT DATA? THIS ACTION IS IRREVERSIBLE.</p>
+            <div class="flex gap-4 justify-center">
+                <a href="${deleteUrl}" class="bg-red-600 text-white px-4 py-1 btn-pixel font-bold">[ YES_ERASE ]</a>
+                <button onclick="closeModal()" class="bg-zinc-800 text-white px-4 py-1 btn-pixel font-bold">[ CANCEL ]</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('active-modal');
+        const overlay = document.getElementById('modal-overlay');
+        if(modal) modal.remove();
+        overlay.style.display = 'none';
+    }
+    </script>
+</body>
+</html>

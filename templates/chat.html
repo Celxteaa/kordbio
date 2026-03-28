@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat: {{ target.username }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { font-family: 'VT323', monospace; background: #000; color: #22c55e; }</style>
+</head>
+<body class="p-8 flex justify-center">
+    <div class="w-full max-w-xl border-4 border-zinc-800 p-6 bg-zinc-950">
+        <div class="flex justify-between border-b border-zinc-800 pb-4 mb-4">
+            <h1 class="text-2xl">COMM_LINK: {{ target.username }}</h1>
+            <a href="/{{ target.username }}" class="text-red-500">[EXIT]</a>
+        </div>
+        <div class="h-64 overflow-y-auto mb-4 space-y-2 p-2 bg-black">
+            {% for m in msgs %}
+            <div class="{{ 'text-right' if m.sender_id == user.id else 'text-left' }}">
+                <span class="inline-block px-2 bg-zinc-900 border border-zinc-800">
+                    {{ m.message }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        <form action="" method="post" class="flex gap-2">
+            <input type="text" name="message" class="flex-grow bg-black border-2 border-zinc-700 p-2 text-green-400" placeholder="Type data..." required>
+            <button class="bg-green-600 text-black px-4 font-bold">SEND</button>
+        </form>
+    </div>
+</body>
+</html>

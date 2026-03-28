@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KordBio | System_Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'VT323', monospace; background: #000; color: #fff; transition: background 0.5s; }
+        .config-box { border: 4px solid #333; background: #0a0a0a; box-shadow: 10px 10px 0px #111; }
+        .input-line { background: #000; border: 2px solid #333; color: #fff; font-size: 1.5rem; outline: none; transition: 0.2s; }
+        .input-line:focus { border-color: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.3); }
+        
+        .preview-dark { border-left: 8px solid #22c55e; }
+        .preview-emerald { border-left: 8px solid #10b981; }
+        .preview-ruby { border-left: 8px solid #ef4444; }
+
+        .btn-pixel { transition: 0.1s; cursor: pointer; }
+        .btn-pixel:active { transform: translate(3px, 3px); box-shadow: none; }
+
+        .premium-lock { filter: grayscale(1); opacity: 0.5; pointer-events: none; }
+
+        .toast { 
+            position: fixed; top: 20px; right: 20px; padding: 15px 25px; 
+            border: 4px solid #fff; background: #000; z-index: 100; 
+            box-shadow: 8px 8px 0px #111; font-size: 1.2rem; text-transform: uppercase;
+            animation: slideIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        }
+        @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="toast {% if category == 'success' %}border-green-500 text-green-500{% else %}border-red-500 text-red-500{% endif %}">
+            >> {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="max-w-xl w-full config-box p-8">
+        <div class="flex justify-between items-center border-b-2 border-zinc-800 pb-4 mb-8">
+            <h1 class="text-4xl font-bold italic text-green-500 uppercase">SYS_CONFIG_V1.1</h1>
+            <a href="/" class="text-zinc-500 hover:text-white underline text-xl">[ ABORT ]</a>
+        </div>
+
+        <form action="{{ url_for('settings') }}" method="POST" class="space-y-8">
+            
+            <div>
+                <label class="block text-2xl text-zinc-500 uppercase mb-2">NETWORK_HANDLE</label>
+                <div class="flex items-center bg-black border-2 border-zinc-800 focus-within:border-blue-500">
+                    <span class="p-3 text-2xl text-zinc-600">@</span>
+                    <input type="text" name="username" id="username-input" value="{{ user.username }}" required
+                           class="w-full bg-transparent p-3 text-2xl outline-none text-white">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-2xl text-zinc-500 uppercase mb-2">USER_IDENTITY_BIO</label>
+                <input type="text" name="bio" id="bio-input" value="{{ user.bio or '' }}" maxlength="50" 
+                       class="w-full input-line p-3" placeholder="Identify yourself...">
+            </div>
+
+            <div class="border-t border-zinc-800 pt-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <label class="text-2xl text-zinc-500 uppercase">PREMIUM_VISUALS</label>
+                    {% if user.is_premium == 0 %}
+                    <a href="{{ url_for('upgrade_landing') }}" class="text-xs bg-red-900 px-2 py-1 text-white animate-pulse">UPGRADE_REQUIRED</a>
+                    {% endif %}
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 {% if user.is_premium == 0 %}premium-lock{% endif %}">
+                    <div>
+                        <label class="block text-xl text-zinc-600 uppercase mb-1">TERMINAL_PREFIX</label>
+                        <input type="text" name="prefix" id="prefix-input" value="{{ user.custom_prefix or '>>' }}" maxlength="5"
+                               class="w-full input-line p-2 text-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xl text-zinc-600 uppercase mb-1">PROFILE_GLOW</label>
+                        <input type="color" name="glow" id="glow-input" value="{{ user.profile_glow or '#22c55e' }}" 
+                               class="w-full h-12 bg-black border-2 border-zinc-800 cursor-pointer p-1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-2xl text-zinc-500 uppercase mb-2">LOCALE_LANG</label>
+                    <select name="lang" class="w-full input-line p-2 cursor-pointer">
+                        <option value="id" {% if user.lang == 'id' %}selected{% endif %}>Bahasa Indonesia</option>
+                        <option value="en" {% if user.lang == 'en' %}selected{% endif %}>English (US)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-2xl text-zinc-500 uppercase mb-2">VISUAL_THEME</label>
+                    <select name="theme" id="theme-select" class="w-full input-line p-2 cursor-pointer">
+                        <option value="dark" {% if user.theme == 'dark' %}selected{% endif %}>ONYX_DARK (Green)</option>
+                        <option value="emerald" {% if user.theme == 'emerald' %}selected{% endif %}>EMERALD_CITY (Teal)</option>
+                        <option value="ruby" {% if user.theme == 'ruby' %}selected{% endif %}>RUBY_RED (Crimson)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="preview-box" class="p-4 bg-zinc-900 border-2 border-dashed border-zinc-700 mt-4 preview-{{ user.theme }}">
+                <p class="text-zinc-500 text-sm italic uppercase mb-2">Live_Identity_Preview:</p>
+                <div class="flex items-center gap-4">
+                    <div id="avatar-preview" class="w-12 h-12 bg-zinc-800 border flex items-center justify-center text-2xl font-bold">
+                        {{ user.username[0].upper() if user.username else '?' }}
+                    </div>
+                    <div>
+                        <p class="text-xl font-bold leading-none uppercase text-white">
+                            <span id="prefix-preview" class="text-green-500">{{ user.custom_prefix or '>>' }}</span> 
+                            <span id="user-preview">{{ user.username }}</span>
+                        </p>
+                        <p id="bio-preview" class="text-sm opacity-60 italic mt-1">{{ user.bio or 'No bio set.' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-green-600 text-black py-4 text-3xl font-bold uppercase btn-pixel shadow-[6px_6px_0px_#14532d] hover:bg-green-400">
+                SAVE_MODIFICATIONS.EXE
+            </button>
+        </form>
+        
+        <form action="{{ url_for('action_self_destruct') }}" method="POST" onsubmit="return confirm('WIPE ALL DATA PERMANENTLY?');" class="mt-8">
+            <button type="submit" class="text-red-900 hover:text-red-500 text-xl border border-red-900 px-4 py-1 uppercase font-bold w-full italic">
+                [ !! SELF_DESTRUCT_ACCOUNT !! ]
+            </button>
+        </form>
+
+        <div class="mt-10 border-t border-zinc-900 pt-4 flex justify-between text-zinc-700 text-sm">
+            <span>STABLE_BUILD_2026</span>
+            <span>TIER: {% if user.is_premium == 2 %}CORE_OVERLORD{% elif user.is_premium == 1 %}BIT_CITIZEN{% else %}BASIC_USER{% endif %}</span>
+        </div>
+    </div>
+
+    <script>
+        const glowInput = document.getElementById('glow-input');
+        const avatarPreview = document.getElementById('avatar-preview');
+        const usernameInput = document.getElementById('username-input');
+        const userPreview = document.getElementById('user-preview');
+        const bioInput = document.getElementById('bio-input');
+        const bioPreview = document.getElementById('bio-preview');
+        const prefixInput = document.getElementById('prefix-input');
+        const prefixPreview = document.getElementById('prefix-preview');
+        const themeSelect = document.getElementById('theme-select');
+        const previewBox = document.getElementById('preview-box');
+
+        function updateGlow(color) {
+            avatarPreview.style.borderColor = color;
+            avatarPreview.style.boxShadow = `0 0 15px ${color}`;
+        }
+
+        function updateTheme() {
+            previewBox.className = `p-4 bg-zinc-900 border-2 border-dashed border-zinc-700 mt-4 preview-${themeSelect.value}`;
+            const colors = { 'ruby': '#1a0505', 'emerald': '#051a14', 'dark': '#000' };
+            document.body.style.background = colors[themeSelect.value] || '#000';
+        }
+
+        // Event Listeners
+        glowInput.addEventListener('input', (e) => updateGlow(e.target.value));
+        usernameInput.addEventListener('input', (e) => userPreview.innerText = e.target.value);
+        bioInput.addEventListener('input', (e) => bioPreview.innerText = e.target.value || 'No bio set.');
+        prefixInput.addEventListener('input', (e) => prefixPreview.innerText = e.target.value);
+        themeSelect.addEventListener('change', updateTheme);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inisialisasi awal
+            updateGlow(glowInput.value);
+            updateTheme();
+
+            // Auto-hide toast
+            const toasts = document.querySelectorAll('.toast');
+            toasts.forEach(t => {
+                setTimeout(() => {
+                    t.style.animation = "slideOut 0.5s ease-in forwards";
+                    setTimeout(() => t.remove(), 500);
+                }, 4000);
+            });
+        });
+    </script>
+</body>
+</html>
