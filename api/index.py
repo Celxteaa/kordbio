@@ -1,5 +1,6 @@
 import os, requests, base64
 from datetime import datetime
+from urllib.parse import unquote  # FIX: Tambahkan untuk menangani %20 (spasi)
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -503,18 +504,19 @@ def settings():
         return redirect(url_for('settings'))
     return render_template('settings.html')
 
-# --- DYNAMIC PROFILE (DITEMPATKAN DI AKHIR) ---
+# --- DYNAMIC PROFILE (THE FINAL FIX) ---
 @app.route('/<username>/') 
 @app.route('/<username>')
 def profile(username):
-    # 1. Bersihkan input
-    clean_username = username.lower().strip()
+    # 1. Bersihkan input & Decode %20 menjadi spasi (Penting!)
+    clean_username = unquote(username).lower().strip()
     
-    # 2. Proteksi folder statis
-    if clean_username in ['static', 'favicon.ico', 'favicon.png', 'robots.txt']:
+    # 2. Proteksi folder statis & routes inti
+    reserved_paths = ['static', 'favicon.ico', 'favicon.png', 'robots.txt', 'login', 'register', 'dashboard', 'settings']
+    if clean_username in reserved_paths:
         return "", 204
 
-    # 3. Query Target
+    # 3. Query Target dengan Case Insensitive
     target = User.query.filter(User.username.ilike(clean_username)).first()
     
     if not target: 
