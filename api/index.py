@@ -276,7 +276,7 @@ def ai_chat():
             "Help users with tech, code, and sharing their work within the KordBio ecosystem. "
             "Tone: Intelligent, technical, supportive"
             "- If a user asks about general topics (politics, cooking, gossip), politely steer them back to tech or decline. "
-            "Current User context: " + user['username']
+            "Current User context: " + user_obj.username
         )
 
         completion = client.chat.completions.create(
