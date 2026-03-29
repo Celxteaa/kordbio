@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from groq import Groq
+from sqlalchemy import func
 
 # 1. KONFIGURASI
 load_dotenv()
@@ -141,7 +142,6 @@ def login():
             username_input = request.form['username'].lower().strip()
             password_input = request.form['password']
             
-            # Gunakan ilike agar lebih fleksibel saat login
             u = User.query.filter(User.username.ilike(username_input)).first()
             if u and check_password_hash(u.password_hash, password_input):
                 session['user_id'] = u.id
@@ -504,23 +504,28 @@ def settings():
         return redirect(url_for('settings'))
     return render_template('settings.html')
 
-# --- DYNAMIC PROFILE (CRITICAL FIX) ---
+# --- DYNAMIC PROFILE (THE FINAL FIX) ---
+@app.route('/<username>/') # Handle trailing slash
 @app.route('/<username>')
 def profile(username):
-    # Membersihkan input dari URL
+    # 1. Bersihkan input
     clean_username = username.lower().strip()
     
-    # Gunakan .ilike() untuk pencarian case-insensitive di Postgres
+    # 2. Proteksi folder statis & file sistem agar tidak dianggap username
+    if clean_username in ['static', 'favicon.ico', 'favicon.png', 'robots.txt']:
+        return "", 204
+
+    # 3. Query menggunakan ilike untuk Postgres (Supabase)
     target = User.query.filter(User.username.ilike(clean_username)).first()
     
     if not target: 
-        # Debugging log di console server
         print(f"DEBUG: Profile not found for: {clean_username}")
-        return f"404: USER '{clean_username}' NOT FOUND", 404
+        # Kembalikan tampilan 404 yang lebih sopan (atau render template 404 jika ada)
+        return f"NODE_ERROR: USER '{clean_username}' NOT FOUND IN THE GRID.", 404
         
     projs = Project.query.filter_by(user_id=target.id).all()
     
-    # Ambil user saat ini untuk logika tombol interaction di profile
+    # Ambil user aktif untuk fitur 'Chat' atau 'Edit' di halaman profile
     user_now = current_user()
     
     return render_template('profile.html', target=target, projects=projs, user=user_now)
