@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from groq import Groq
 from sqlalchemy import func
 
-# 1. KONFIGURASI
+# 1. KONFIGURASI UTAMA
 load_dotenv()
 
 app = Flask(__name__, 
@@ -29,7 +29,7 @@ if db_url:
     elif db_url.startswith("postgresql://") and "+pg8000" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
     
-    # 3. Bersihkan query parameters
+    # 3. Bersihkan query parameters agar tidak mengganggu koneksi SQLAlchemy
     if "?" in db_url:
         db_url = db_url.split("?")[0]
 
@@ -160,7 +160,7 @@ def register():
     if request.method == 'POST':
         try:
             username = request.form['username'].lower().strip()
-            reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook', 'favicon.ico', 'favicon.png', 'static']
+            reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook', 'static']
             
             if username in reserved:
                 flash("SYSTEM_ERROR: Username reserved.", "error")
@@ -484,7 +484,6 @@ def settings():
     if request.method == 'POST':
         new_username = request.form.get('username', '').lower().strip()
         
-        # Cek jika username baru sudah dipakai orang lain
         existing = User.query.filter(User.username.ilike(new_username)).first()
         if existing and existing.id != user.id:
             flash("SYSTEM_ERROR: Username exists.", "error")
@@ -504,28 +503,24 @@ def settings():
         return redirect(url_for('settings'))
     return render_template('settings.html')
 
-# --- DYNAMIC PROFILE (THE FINAL FIX) ---
-@app.route('/<username>/') # Handle trailing slash
+# --- DYNAMIC PROFILE (DITEMPATKAN DI AKHIR) ---
+@app.route('/<username>/') 
 @app.route('/<username>')
 def profile(username):
     # 1. Bersihkan input
     clean_username = username.lower().strip()
     
-    # 2. Proteksi folder statis & file sistem agar tidak dianggap username
+    # 2. Proteksi folder statis
     if clean_username in ['static', 'favicon.ico', 'favicon.png', 'robots.txt']:
         return "", 204
 
-    # 3. Query menggunakan ilike untuk Postgres (Supabase)
+    # 3. Query Target
     target = User.query.filter(User.username.ilike(clean_username)).first()
     
     if not target: 
-        print(f"DEBUG: Profile not found for: {clean_username}")
-        # Kembalikan tampilan 404 yang lebih sopan (atau render template 404 jika ada)
         return f"NODE_ERROR: USER '{clean_username}' NOT FOUND IN THE GRID.", 404
         
     projs = Project.query.filter_by(user_id=target.id).all()
-    
-    # Ambil user aktif untuk fitur 'Chat' atau 'Edit' di halaman profile
     user_now = current_user()
     
     return render_template('profile.html', target=target, projects=projs, user=user_now)
