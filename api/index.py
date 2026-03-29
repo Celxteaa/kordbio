@@ -19,27 +19,27 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_fina
 db_url = os.getenv("DATABASE_URL")
 
 if db_url:
-    # Menggunakan driver pg8000 yang lebih stabil di environment serverless
+    # Memastikan penggunaan driver pg8000 yang lebih kompatibel dengan serverless
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
     elif db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
-    # Membersihkan parameter sslmode dari URL karena pg8000 tidak menerimanya sebagai argumen string
-    if "sslmode=" in db_url:
+    # Menghapus parameter query (seperti ?sslmode=require) agar tidak konflik dengan driver
+    if "?" in db_url:
         db_url = db_url.split("?")[0]
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Konfigurasi Engine: Pindahkan SSL ke connect_args agar diterima pg8000
+# Konfigurasi Engine: SSL diatur di sini agar diterima pg8000 dengan benar
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
     "pool_size": 10,
     "max_overflow": 20,
     "connect_args": {
-        "ssl": True  # Ini pengganti sslmode=require yang aman untuk pg8000
+        "ssl": True  # Parameter SSL yang valid untuk pg8000
     }
 }
 
@@ -124,6 +124,12 @@ def inject_notifications():
         ai_count = AILog.query.filter(AILog.user_id == user.id, db.func.date(AILog.timestamp) == today).count()
     return dict(user=user, unread_count=unread_count, ai_count=ai_count, now=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
+# --- 0. HELPER ROUTES ---
+@app.route('/favicon.ico')
+@app.route('/favicon.png')
+def favicon():
+    return "", 204
+
 # --- 1. AUTH ROUTES ---
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -141,7 +147,7 @@ def login():
 def register():
     if request.method == 'POST':
         username = request.form['username'].lower().strip()
-        reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook']
+        reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook', 'favicon.ico', 'favicon.png']
         if username in reserved:
             flash("SYSTEM_ERROR: Username reserved.", "error")
             return redirect(url_for('register'))
