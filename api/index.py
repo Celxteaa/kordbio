@@ -1,6 +1,6 @@
 import os, requests, base64
 from datetime import datetime
-from urllib.parse import unquote  # FIX: Tambahkan untuk menangani %20 (spasi)
+from urllib.parse import unquote
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -36,7 +36,6 @@ if db_url:
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 280,
@@ -119,14 +118,14 @@ def current_user():
 
 @app.context_processor
 def inject_notifications():
-    user = current_user()
+    user_obj = current_user()
     unread_count = 0
     ai_count = 0
-    if user:
-        unread_count = Message.query.filter_by(receiver_id=user.id, is_read=0).count()
+    if user_obj:
+        unread_count = Message.query.filter_by(receiver_id=user_obj.id, is_read=0).count()
         today = datetime.utcnow().date()
-        ai_count = AILog.query.filter(AILog.user_id == user.id, db.func.date(AILog.timestamp) == today).count()
-    return dict(user=user, unread_count=unread_count, ai_count=ai_count, now=datetime.now().strftime('%Y-%m-%d %H:%M'))
+        ai_count = AILog.query.filter(AILog.user_id == user_obj.id, db.func.date(AILog.timestamp) == today).count()
+    return dict(user=user_obj, unread_count=unread_count, ai_count=ai_count, now=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
 # --- 0. HELPER & PRIORITY ROUTES ---
 @app.route('/favicon.ico')
@@ -151,6 +150,7 @@ def login():
             
             flash("ACCESS_DENIED: Invalid credentials.", "error")
         except Exception as e:
+            db.session.rollback()
             flash(f"SYSTEM_ERROR: Database connection issue.", "error")
             print(f"Login Error: {e}")
             
@@ -193,11 +193,11 @@ def logout():
 
 @app.route('/manage/create-post', methods=['POST'])
 def action_create_post():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
     content = request.form.get('content', '').strip()
     if content:
-        new_post = Post(user_id=user.id, content=content)
+        new_post = Post(user_id=user_obj.id, content=content)
         db.session.add(new_post)
         db.session.commit()
         flash("LOG_ENTRY_SUCCESS.", "success")
@@ -205,9 +205,9 @@ def action_create_post():
 
 @app.route('/manage/delete-post/<int:id>')
 def action_delete_post(id):
-    user = current_user()
-    if not user: return redirect(url_for('login'))
-    post = Post.query.filter_by(id=id, user_id=user.id).first()
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
+    post = Post.query.filter_by(id=id, user_id=user_obj.id).first()
     if post:
         db.session.delete(post)
         db.session.commit()
@@ -216,9 +216,9 @@ def action_delete_post(id):
 
 @app.route('/manage/delete-project/<int:id>')
 def action_delete_project(id):
-    user = current_user()
-    if not user: return redirect(url_for('login'))
-    proj = Project.query.filter_by(id=id, user_id=user.id).first()
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
+    proj = Project.query.filter_by(id=id, user_id=user_obj.id).first()
     if proj:
         db.session.delete(proj)
         db.session.commit()
@@ -227,13 +227,13 @@ def action_delete_project(id):
 
 @app.route('/manage/self-destruct', methods=['GET', 'POST'])
 def action_self_destruct():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
-    Project.query.filter_by(user_id=user.id).delete()
-    Post.query.filter_by(user_id=user.id).delete()
-    Message.query.filter((Message.sender_id == user.id) | (Message.receiver_id == user.id)).delete()
-    AILog.query.filter_by(user_id=user.id).delete()
-    db.session.delete(user)
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
+    Project.query.filter_by(user_id=user_obj.id).delete()
+    Post.query.filter_by(user_id=user_obj.id).delete()
+    Message.query.filter((Message.sender_id == user_obj.id) | (Message.receiver_id == user_obj.id)).delete()
+    AILog.query.filter_by(user_id=user_obj.id).delete()
+    db.session.delete(user_obj)
     db.session.commit()
     session.clear()
     flash("ACCOUNT_TERMINATED: All data wiped.", "error")
@@ -241,11 +241,11 @@ def action_self_destruct():
 
 @app.route('/manage/delete-chat/<int:target_id>', methods=['GET', 'POST'])
 def action_delete_chat(target_id):
-    user = current_user()
-    if not user: return redirect(url_for('login'))
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
     Message.query.filter(
-        ((Message.sender_id == user.id) & (Message.receiver_id == target_id)) |
-        ((Message.sender_id == target_id) & (Message.receiver_id == user.id))
+        ((Message.sender_id == user_obj.id) & (Message.receiver_id == target_id)) |
+        ((Message.sender_id == target_id) & (Message.receiver_id == user_obj.id))
     ).delete()
     db.session.commit()
     flash("CHAT_HISTORY_ERASED.", "warning")
@@ -255,12 +255,12 @@ def action_delete_chat(target_id):
 
 @app.route('/api/ai', methods=['POST'])
 def ai_chat():
-    user = current_user()
-    if not user: return jsonify({"error": "Unauthorized"}), 401
+    user_obj = current_user()
+    if not user_obj: return jsonify({"error": "Unauthorized"}), 401
     
-    if user.is_premium < 2:
+    if user_obj.is_premium < 2:
         today = datetime.utcnow().date()
-        usage = AILog.query.filter(AILog.user_id == user.id, db.func.date(AILog.timestamp) == today).count()
+        usage = AILog.query.filter(AILog.user_id == user_obj.id, db.func.date(AILog.timestamp) == today).count()
         if usage >= 5:
             return jsonify({
                 "error": "LIMIT_REACHED", 
@@ -270,7 +270,7 @@ def ai_chat():
     data = request.json
     try:
         system_instruction = (
-            f"You are Celestia, AI Assistant for KordBio. User: {user.username}. "
+            f"You are Celestia, AI Assistant for KordBio. User: {user_obj.username}. "
             "KordBio is a tech networking hub. Tone: Technical, supportive."
         )
 
@@ -281,7 +281,7 @@ def ai_chat():
                 {"role": "user", "content": data.get('prompt')}
             ]
         )
-        new_log = AILog(user_id=user.id)
+        new_log = AILog(user_id=user_obj.id)
         db.session.add(new_log)
         db.session.commit()
         return jsonify({"response": completion.choices[0].message.content})
@@ -298,12 +298,12 @@ def saweria_webhook():
     amount = data.get('amount_raw', 0)
     if "UPGRADE_" in message:
         target_username = message.replace("UPGRADE_", "").strip().lower()
-        user = User.query.filter(User.username.ilike(target_username)).first()
-        if user:
+        u = User.query.filter(User.username.ilike(target_username)).first()
+        if u:
             tier = 2 if amount >= 50000 else (1 if amount >= 15000 else 0)
             if tier > 0:
-                user.is_premium = tier
-                new_conf = Confirmation(user_id=user.id, tier=tier, status='AUTO_APPROVED', proof_image='SAWERIA_WEBHOOK')
+                u.is_premium = tier
+                new_conf = Confirmation(user_id=u.id, tier=tier, status='AUTO_APPROVED', proof_image='SAWERIA_WEBHOOK')
                 db.session.add(new_conf)
                 db.session.commit()
                 return jsonify({"status": "success"}), 200
@@ -311,33 +311,33 @@ def saweria_webhook():
 
 @app.route('/upgrade')
 def upgrade_landing():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
-    return render_template('upgrade.html')
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
+    return render_template('upgrade.html', user=user_obj)
 
 @app.route('/upgrade/qris')
 def upgrade_qris():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
     tier = request.args.get('tier', '1')
     price = "15.000" if tier == "1" else "50.000"
     tier_name = "BIT_CITIZEN" if tier == "1" else "CORE_OVERLORD"
     payment_data = {
         "tier": tier, "tier_name": tier_name, "amount": price,
-        "order_id": f"KB-{user.id}-{int(datetime.now().timestamp())}",
-        "qris_url": f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=KORD_PAY_{tier}_{user.username}"
+        "order_id": f"KB-{user_obj.id}-{int(datetime.now().timestamp())}",
+        "qris_url": f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=KORD_PAY_{tier}_{user_obj.username}"
     }
-    return render_template('upgrade_payment.html', payment=payment_data)
+    return render_template('upgrade_payment.html', payment=payment_data, user=user_obj)
 
 @app.route('/upgrade/confirm', methods=['POST'])
 def action_confirm_payment():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
     tier = request.form.get('tier')
     file = request.files.get('proof')
     if file and tier:
         encoded_string = base64.b64encode(file.read()).decode('utf-8')
-        new_conf = Confirmation(user_id=user.id, tier=tier, proof_image=encoded_string)
+        new_conf = Confirmation(user_id=user_obj.id, tier=tier, proof_image=encoded_string)
         db.session.add(new_conf)
         db.session.commit()
         flash("PROOF_SUBMITTED: Wait for verification.", "success")
@@ -345,8 +345,8 @@ def action_confirm_payment():
 
 @app.route('/admin/verify')
 def admin_verify():
-    user = current_user()
-    if not user or user.username != 'admin cel': return "ACCESS_DENIED", 403
+    user_obj = current_user()
+    if not user_obj or user_obj.username != 'admin cel': return "ACCESS_DENIED", 403
     
     pending = db.session.query(
         Confirmation.id, 
@@ -358,12 +358,12 @@ def admin_verify():
      .filter(Confirmation.status == 'PENDING').all()
     
     active_users = User.query.filter(User.is_premium > 0, User.username != 'admin cel').all()
-    return render_template('admin_verify.html', pending=pending, active_users=active_users, user=user)
+    return render_template('admin_verify.html', pending=pending, active_users=active_users, user=user_obj)
 
 @app.route('/admin/approve/<int:conf_id>/<int:user_id>/<int:tier>')
 def action_approve(conf_id, user_id, tier):
-    user = current_user()
-    if not user or user.username != 'admin cel': return "UNAUTHORIZED", 403
+    user_obj = current_user()
+    if not user_obj or user_obj.username != 'admin cel': return "UNAUTHORIZED", 403
     u = db.session.get(User, user_id)
     c = db.session.get(Confirmation, conf_id)
     if u and c:
@@ -375,8 +375,8 @@ def action_approve(conf_id, user_id, tier):
 
 @app.route('/admin/revoke/<int:user_id>')
 def action_revoke(user_id):
-    user = current_user()
-    if not user or user.username != 'admin cel': return "UNAUTHORIZED", 403
+    user_obj = current_user()
+    if not user_obj or user_obj.username != 'admin cel': return "UNAUTHORIZED", 403
     u = db.session.get(User, user_id)
     if u:
         u.is_premium = 0
@@ -389,7 +389,7 @@ def action_revoke(user_id):
 
 @app.route('/')
 def index():
-    user = current_user()
+    user_obj = current_user()
     try:
         posts_data = db.session.query(
             Post.id, Post.content, Post.timestamp, Post.user_id,
@@ -397,12 +397,12 @@ def index():
         ).join(User, Post.user_id == User.id).order_by(Post.timestamp.desc()).all()
     except Exception:
         posts_data = []
-    return render_template('index.html', posts=posts_data, user=user)
+    return render_template('index.html', posts=posts_data, user=user_obj)
 
 @app.route('/messages')
 def messages_inbox():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
     
     try:
         chat_list_raw = db.session.execute(db.text('''
@@ -423,7 +423,7 @@ def messages_inbox():
                 ORDER BY timestamp DESC LIMIT 1
             )
             ORDER BY m.timestamp DESC
-        '''), {'uid': user.id}).fetchall()
+        '''), {'uid': user_obj.id}).fetchall()
         
         formatted_chats = []
         for row in chat_list_raw:
@@ -439,62 +439,68 @@ def messages_inbox():
     except Exception:
         formatted_chats = []
         
-    return render_template('messages.html', chat_list=formatted_chats, user=user)
+    return render_template('messages.html', chat_list=formatted_chats, user=user_obj)
 
 @app.route('/chat/<username>', methods=['GET', 'POST'])
 def chat(username):
-    user = current_user()
-    if not user: return redirect(url_for('login'))
-    target = User.query.filter(User.username.ilike(username.lower().strip())).first()
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
+    
+    # Perbaikan: Tambahkan unquote di sini juga untuk konsistensi
+    clean_target_name = unquote(username).lower().strip()
+    target = User.query.filter(User.username.ilike(clean_target_name)).first()
+    
     if not target: return redirect(url_for('index'))
+    
     if request.method == 'POST':
         msg_text = request.form.get('message', '').strip()
         if msg_text:
-            new_msg = Message(sender_id=user.id, receiver_id=target.id, message=msg_text)
+            new_msg = Message(sender_id=user_obj.id, receiver_id=target.id, message=msg_text)
             db.session.add(new_msg)
             db.session.commit()
             return redirect(url_for('chat', username=username))
     
-    Message.query.filter_by(sender_id=target.id, receiver_id=user.id).update({Message.is_read: 1})
+    Message.query.filter_by(sender_id=target.id, receiver_id=user_obj.id).update({Message.is_read: 1})
     db.session.commit()
     
     msgs = Message.query.filter(
-        ((Message.sender_id == user.id) & (Message.receiver_id == target.id)) |
-        ((Message.sender_id == target.id) & (Message.receiver_id == user.id))
+        ((Message.sender_id == user_obj.id) & (Message.receiver_id == target.id)) |
+        ((Message.sender_id == target.id) & (Message.receiver_id == user_obj.id))
     ).order_by(Message.timestamp.asc()).all()
-    return render_template('chat.html', target=target, msgs=msgs)
+    
+    return render_template('chat.html', target=target, msgs=msgs, user=user_obj)
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
     if request.method == 'POST':
-        new_p = Project(user_id=user.id, title=request.form.get('title'), 
+        new_p = Project(user_id=user_obj.id, title=request.form.get('title'), 
                         description=request.form.get('desc'), link=request.form.get('link'))
         db.session.add(new_p)
         db.session.commit()
         flash("PROJECT_DEPLOYED.", "success")
         return redirect(url_for('dashboard'))
-    projects = Project.query.filter_by(user_id=user.id).all()
-    return render_template('dashboard.html', projects=projects, user=user)
+    projects = Project.query.filter_by(user_id=user_obj.id).all()
+    return render_template('dashboard.html', projects=projects, user=user_obj)
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    user = current_user()
-    if not user: return redirect(url_for('login'))
+    user_obj = current_user()
+    if not user_obj: return redirect(url_for('login'))
     if request.method == 'POST':
         new_username = request.form.get('username', '').lower().strip()
         
         existing = User.query.filter(User.username.ilike(new_username)).first()
-        if existing and existing.id != user.id:
+        if existing and existing.id != user_obj.id:
             flash("SYSTEM_ERROR: Username exists.", "error")
             return redirect(url_for('settings'))
             
-        user.username = new_username
-        user.bio = request.form.get('bio', '').strip()
-        if user.is_premium > 0:
-            user.custom_prefix = request.form.get('prefix', '>>')
-            user.profile_glow = request.form.get('glow', '#22c55e')
+        user_obj.username = new_username
+        user_obj.bio = request.form.get('bio', '').strip()
+        if user_obj.is_premium > 0:
+            user_obj.custom_prefix = request.form.get('prefix', '>>')
+            user_obj.profile_glow = request.form.get('glow', '#22c55e')
         try:
             db.session.commit()
             flash("CONFIG_UPDATED.", "success")
@@ -502,7 +508,7 @@ def settings():
             db.session.rollback()
             flash("SYSTEM_ERROR: Update failed.", "error")
         return redirect(url_for('settings'))
-    return render_template('settings.html')
+    return render_template('settings.html', user=user_obj)
 
 # --- DYNAMIC PROFILE (THE FINAL FIX) ---
 @app.route('/<username>/') 
@@ -511,8 +517,12 @@ def profile(username):
     # 1. Bersihkan input & Decode %20 menjadi spasi (Penting!)
     clean_username = unquote(username).lower().strip()
     
-    # 2. Proteksi folder statis & routes inti
-    reserved_paths = ['static', 'favicon.ico', 'favicon.png', 'robots.txt', 'login', 'register', 'dashboard', 'settings']
+    # 2. Proteksi folder statis & routes inti (Ditambah agar lebih aman)
+    reserved_paths = [
+        'static', 'favicon.ico', 'favicon.png', 'robots.txt', 
+        'login', 'register', 'dashboard', 'settings', 'logout',
+        'api', 'chat', 'messages', 'admin', 'upgrade', 'webhook', 'manage'
+    ]
     if clean_username in reserved_paths:
         return "", 204
 
