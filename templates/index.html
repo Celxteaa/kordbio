@@ -99,7 +99,7 @@
     <nav class="w-full md:w-64 border-b-4 md:border-b-0 md:border-r-4 border-zinc-900 p-6 flex flex-col gap-4 md:gap-6 sticky top-0 bg-black z-[50] md:h-screen">
         <h1 class="text-3xl md:text-4xl font-bold text-green-500 italic uppercase">KORDBIO</h1>
         <div class="flex flex-row md:flex-col gap-4 text-xl md:text-2xl overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
-            <a href="/" class="text-green-500 hover:underline whitespace-nowrap">> HOME</a>
+            <a href="/" class="text-green-500 hover:underline whitespace-nowrap">> FEED</a>
             {% if user %}
             <a href="/dashboard" class="hover:text-blue-400 whitespace-nowrap">> DASHBOARD</a>
             <a href="/messages" class="hover:text-yellow-400 whitespace-nowrap">> MESSAGES</a>
@@ -132,6 +132,27 @@
             <button class="mt-2 w-full sm:w-auto bg-green-600 px-8 py-1 font-bold text-black uppercase btn-pixel text-xl">SEND_TO_FEED</button>
         </form>
         {% endif %}
+
+        <div class="mb-16 border-l-4 border-yellow-600 bg-zinc-950 p-6 shadow-[6px_6px_0px_#000]">
+            <div class="flex justify-between items-center mb-4 border-b border-yellow-900 pb-2">
+                <h2 class="text-yellow-500 font-bold text-2xl uppercase italic tracking-tighter">System_Changelog</h2>
+                <span class="bg-yellow-600 text-black px-2 py-0.5 text-xs font-bold">LATEST: v1.0.5</span>
+            </div>
+            <div class="space-y-4">
+                <div class="group">
+                    <p class="text-yellow-100 text-xl font-bold">[v1.0.0] - COMM_LINK & MOBILE_SYNC</p>
+                    <ul class="text-zinc-400 text-lg list-none pl-4 mt-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <li>- Deployed fully responsive grid for mobile nodes.</li>
+                        <li>- Optimized COMM_LINK (Chat) interface for real-time handshake.</li>
+                        <li>- Enhanced AI_CELESTIA_CORTEX code rendering & overflow handling.</li>
+                    </ul>
+                </div>
+                <div class="opacity-50">
+                    <p class="text-zinc-500 text-lg">[v1.0.0] - INITIAL_GRID_LAUNCH</p>
+                    <p class="text-zinc-600 text-sm pl-4 italic">> Core networking hub established.</p>
+                </div>
+            </div>
+        </div>
 
         <div class="space-y-12">
             <h2 class="text-zinc-700 uppercase tracking-[0.5em] text-center text-sm">-- GLOBAL_SYSTEM_LOGS --</h2>
