@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inbox: TERMINAL_MESSAGES</title>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,78 +16,85 @@
             box-shadow: 0 0 8px #ef4444;
             border-radius: 1px;
         }
+        /* Penyesuaian truncate agar fleksibel di mobile */
         .truncate-pixel {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 400px;
+            max-width: 100%;
         }
-        /* Animasi kursor retro */
         .cursor-blink { animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
+        
+        /* Smooth scrollbar untuk list panjang */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #18181b; }
     </style>
 </head>
-<body class="p-8 flex justify-center min-h-screen">
+<body class="p-4 sm:p-8 flex justify-center min-h-screen">
     <div class="w-full max-w-2xl">
         
-        <div class="flex justify-between items-end border-b-2 border-zinc-800 pb-4 mb-8">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b-2 border-zinc-800 pb-4 mb-8 gap-4">
             <div>
-                <h1 class="text-5xl font-bold uppercase tracking-tighter">Inbox_Logs</h1>
-                <p class="text-xl opacity-60">Active_Nodes: [{{ chat_list|length }}]</p>
+                <h1 class="text-4xl sm:text-5xl font-bold uppercase tracking-tighter">Inbox_Logs</h1>
+                <p class="text-lg sm:text-xl opacity-60">Active_Nodes: [{{ chat_list|length }}]</p>
             </div>
-            <a href="/" class="text-2xl hover:underline italic">[ RETURN_TO_BASE ]</a>
+            <a href="/" class="text-xl sm:text-2xl hover:underline italic text-zinc-400 sm:text-inherit">[ RETURN_TO_BASE ]</a>
         </div>
 
         <div class="space-y-4">
             {% for chat in chat_list %}
             <div class="relative group">
-                <form action="{{ url_for('action_delete_chat', target_id=chat.target_id) }}" method="POST" class="absolute -top-2 -right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button type="submit" class="bg-red-600 text-black px-2 py-0.5 text-xs font-bold hover:bg-white hover:text-red-600 border border-red-600">
-                        PURGE_DATA
+                <form action="{{ url_for('action_delete_chat', target_id=chat.target_id) }}" method="POST" 
+                      class="absolute -top-2 -right-1 z-10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button type="submit" class="bg-red-600 text-black px-2 py-0.5 text-xs font-bold hover:bg-white hover:text-red-600 border border-red-600 shadow-lg">
+                        PURGE
                     </button>
                 </form>
 
                 <a href="{{ url_for('chat', username=chat.username) }}" class="block">
-                    <div class="pixel-border bg-zinc-950 p-5 flex items-center justify-between transition-all">
-                        <div class="flex flex-col gap-1 overflow-hidden">
+                    <div class="pixel-border bg-zinc-950 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between transition-all gap-3">
+                        
+                        <div class="flex flex-col gap-1 w-full overflow-hidden">
                             <div class="flex items-center gap-3">
-                                <span class="text-zinc-700 font-bold text-xl group-hover:text-green-500">[ID]</span>
+                                <span class="hidden sm:inline text-zinc-700 font-bold text-xl group-hover:text-green-500">[ID]</span>
                                 
-                                <h2 class="text-3xl font-bold leading-none group-hover:text-white transition-colors">
+                                <h2 class="text-2xl sm:text-3xl font-bold leading-none group-hover:text-white transition-colors truncate">
                                     {{ chat.username.upper() }}
                                 </h2>
 
                                 {% if chat.unread_count > 0 %}
-                                    <div class="unread-dot animate-pulse"></div>
-                                    <span class="text-xs text-red-500 uppercase tracking-widest">New_Incoming</span>
+                                    <div class="unread-dot animate-pulse shrink-0"></div>
+                                    <span class="text-[10px] sm:text-xs text-red-500 uppercase tracking-widest shrink-0 font-bold">New</span>
                                 {% endif %}
                             </div>
 
-                            <p class="text-lg text-zinc-500 italic truncate-pixel uppercase pl-8">
+                            <p class="text-base sm:text-lg text-zinc-500 italic truncate-pixel uppercase sm:pl-8">
                                 <span class="text-zinc-800 mr-2">>></span>{{ chat.last_msg }}
                             </p>
                         </div>
 
-                        <div class="flex flex-col items-end gap-1 shrink-0">
-                            <span class="text-sm font-mono text-zinc-600 bg-zinc-900 px-2 py-1">
+                        <div class="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto gap-2 border-t border-zinc-900 sm:border-none pt-2 sm:pt-0 shrink-0">
+                            <span class="text-[10px] sm:text-sm font-mono text-zinc-600 bg-zinc-900 px-2 py-1">
                                 T_STAMP: {{ chat.timestamp[11:16] }}
                             </span>
-                            <span class="text-xl opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">
-                                ACCESS_NODE <span class="cursor-blink">_</span>
+                            <span class="text-sm sm:text-xl opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 font-bold">
+                                ACCESS <span class="hidden sm:inline">NODE</span> <span class="cursor-blink">_</span>
                             </span>
                         </div>
                     </div>
                 </a>
             </div>
             {% else %}
-            <div class="py-20 text-center border-4 border-dashed border-zinc-900 opacity-30">
-                <p class="text-3xl italic">-- NO_ACTIVE_COMMUNICATION_NODES --</p>
-                <p class="text-xl">Initiate handshake via user profiles.</p>
+            <div class="py-16 sm:py-20 text-center border-4 border-dashed border-zinc-900 opacity-30">
+                <p class="text-2xl sm:text-3xl italic">-- NO_ACTIVE_COMM_NODES --</p>
+                <p class="text-lg sm:text-xl mt-2">Initiate handshake via user profiles.</p>
             </div>
             {% endfor %}
         </div>
 
-        <div class="mt-12 text-center text-sm opacity-20 uppercase tracking-[0.2em] border-t border-zinc-900 pt-4">
+        <div class="mt-12 text-center text-[10px] sm:text-sm opacity-20 uppercase tracking-[0.15em] sm:tracking-[0.2em] border-t border-zinc-900 pt-4 mb-8">
             SYSTEM_ID: {{ user.username }}@KORD_BIO // SYNC_TIME: {{ now }}
         </div>
     </div>
