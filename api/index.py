@@ -15,24 +15,32 @@ app = Flask(__name__,
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_final")
 
-# --- KONFIGURASI DATABASE (FIXED FOR VERCEL/SUPABASE) ---
+# --- KONFIGURASI DATABASE (FIXED FOR PG8000 & VERCEL) ---
 db_url = os.getenv("DATABASE_URL")
+
 if db_url:
-    # Memastikan skema postgresql+pg8000 digunakan agar tidak crash di Vercel
+    # Menggunakan driver pg8000 yang lebih stabil di environment serverless
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
     elif db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
+    # Membersihkan parameter sslmode dari URL karena pg8000 tidak menerimanya sebagai argumen string
+    if "sslmode=" in db_url:
+        db_url = db_url.split("?")[0]
+
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Optimasi koneksi agar tidak kena "Cannot assign requested address"
+# Konfigurasi Engine: Pindahkan SSL ke connect_args agar diterima pg8000
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
     "pool_size": 10,
-    "max_overflow": 20
+    "max_overflow": 20,
+    "connect_args": {
+        "ssl": True  # Ini pengganti sslmode=require yang aman untuk pg8000
+    }
 }
 
 db = SQLAlchemy(app)
@@ -93,12 +101,12 @@ class Confirmation(db.Model):
     status = db.Column(db.String(20), default='PENDING')
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-# Inisialisasi Database (Vercel Friendly)
+# Inisialisasi Database
 with app.app_context():
     try:
         db.create_all()
     except Exception as e:
-        print(f"DB Error: {e}")
+        print(f"DB Inisialisasi Error: {e}")
 
 def current_user():
     if 'user_id' in session:
