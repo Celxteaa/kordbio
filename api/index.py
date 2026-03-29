@@ -15,31 +15,31 @@ app = Flask(__name__,
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_final")
 
-# --- KONFIGURASI DATABASE (FIXED FOR VERCEL & PG8000) ---
+# --- KONFIGURASI DATABASE (FIXED FOR STABILITY) ---
 db_url = os.getenv("DATABASE_URL")
 
 if db_url:
-    # Fix untuk dialek postgres di SQLAlchemy 1.4+
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    # 1. Gunakan port 5432 (Direct) jika terdeteksi 6543 (Pooling) untuk stabilitas SQLAlchemy
+    db_url = db_url.replace(":6543", ":5432")
     
-    # Hapus query parameters (?sslmode=...) agar tidak bentrok dengan engine_options
+    # 2. Fix untuk dialek postgres & handler driver pg8000
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
+    elif db_url.startswith("postgresql://") and "+pg8000" not in db_url:
+        db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
+    
+    # 3. Bersihkan query parameters agar tidak bentrok dengan engine_options
     if "?" in db_url:
         db_url = db_url.split("?")[0]
-    
-    # Tambahkan handler driver pg8000 secara eksplisit
-    if "postgresql+pg8000" not in db_url:
-        db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Optimasi pooling untuk environment serverless (Vercel) dan Supabase
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
-    "pool_recycle": 300,
-    "pool_size": 10,
-    "max_overflow": 20,
-    "connect_args": {} # Kosong untuk pg8000 compatibility
+    "pool_recycle": 280,  # Reset koneksi sebelum limit 300s Supabase
+    "connect_args": {} 
 }
 
 db = SQLAlchemy(app)
@@ -134,32 +134,48 @@ def favicon():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        u = User.query.filter_by(username=request.form['username'].lower().strip()).first()
-        if u and check_password_hash(u.password_hash, request.form['password']):
-            session['user_id'] = u.id
-            flash("ACCESS_GRANTED: Welcome back.", "success")
-            return redirect(url_for('dashboard'))
-        flash("ACCESS_DENIED: Invalid credentials.", "error")
+        try:
+            username_input = request.form['username'].lower().strip()
+            password_input = request.form['password']
+            
+            u = User.query.filter_by(username=username_input).first()
+            if u and check_password_hash(u.password_hash, password_input):
+                session['user_id'] = u.id
+                flash("ACCESS_GRANTED: Welcome back.", "success")
+                return redirect(url_for('dashboard'))
+            
+            flash("ACCESS_DENIED: Invalid credentials.", "error")
+        except Exception as e:
+            flash(f"SYSTEM_ERROR: Database connection issue.", "error")
+            print(f"Login Error: {e}")
+            
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form['username'].lower().strip()
-        reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook', 'favicon.ico', 'favicon.png']
-        if username in reserved:
-            flash("SYSTEM_ERROR: Username reserved.", "error")
-            return redirect(url_for('register'))
-        
-        if User.query.filter_by(username=username).first():
-            flash("SYSTEM_ERROR: Username already exists.", "error")
-            return redirect(url_for('register'))
+        try:
+            username = request.form['username'].lower().strip()
+            reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook', 'favicon.ico', 'favicon.png']
+            
+            if username in reserved:
+                flash("SYSTEM_ERROR: Username reserved.", "error")
+                return redirect(url_for('register'))
+            
+            if User.query.filter_by(username=username).first():
+                flash("SYSTEM_ERROR: Username already exists.", "error")
+                return redirect(url_for('register'))
 
-        new_user = User(username=username, password_hash=generate_password_hash(request.form['password']))
-        db.session.add(new_user)
-        db.session.commit()
-        flash("USER_CREATED: Welcome to the grid.", "success")
-        return redirect(url_for('login'))
+            new_user = User(username=username, password_hash=generate_password_hash(request.form['password']))
+            db.session.add(new_user)
+            db.session.commit()
+            flash("USER_CREATED: Welcome to the grid.", "success")
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash("SYSTEM_ERROR: Failed to create account.", "error")
+            print(f"Register Error: {e}")
+            
     return render_template('register.html')
 
 @app.route('/logout')
@@ -433,8 +449,10 @@ def chat(username):
             db.session.add(new_msg)
             db.session.commit()
             return redirect(url_for('chat', username=username))
+    
     Message.query.filter_by(sender_id=target.id, receiver_id=user.id).update({Message.is_read: 1})
     db.session.commit()
+    
     msgs = Message.query.filter(
         ((Message.sender_id == user.id) & (Message.receiver_id == target.id)) |
         ((Message.sender_id == target.id) & (Message.receiver_id == user.id))
