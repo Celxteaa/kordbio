@@ -15,13 +15,25 @@ app = Flask(__name__,
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_final")
 
-# --- KONFIGURASI DATABASE ---
+# --- KONFIGURASI DATABASE (FIXED FOR VERCEL/SUPABASE) ---
 db_url = os.getenv("DATABASE_URL")
-if db_url and db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+if db_url:
+    # Memastikan skema postgresql+pg8000 digunakan agar tidak crash di Vercel
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Optimasi koneksi agar tidak kena "Cannot assign requested address"
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+    "pool_size": 10,
+    "max_overflow": 20
+}
 
 db = SQLAlchemy(app)
 
@@ -80,6 +92,13 @@ class Confirmation(db.Model):
     proof_image = db.Column(db.Text)
     status = db.Column(db.String(20), default='PENDING')
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Inisialisasi Database (Vercel Friendly)
+with app.app_context():
+    try:
+        db.create_all()
+    except Exception as e:
+        print(f"DB Error: {e}")
 
 def current_user():
     if 'user_id' in session:
@@ -349,7 +368,6 @@ def messages_inbox():
     user = current_user()
     if not user: return redirect(url_for('login'))
     
-    # Query disesuaikan untuk menyertakan unread_count dan format timestamp yang aman
     chat_list_raw = db.session.execute(db.text('''
         SELECT 
             u.username, 
@@ -370,7 +388,6 @@ def messages_inbox():
         ORDER BY m.timestamp DESC
     '''), {'uid': user.id}).fetchall()
     
-    # Konversi ke format dictionary agar slicing [11:16] di Jinja bekerja pada string
     formatted_chats = []
     for row in chat_list_raw:
         formatted_chats.append({
@@ -443,10 +460,11 @@ def settings():
 def profile(username):
     target = User.query.filter_by(username=username.lower().strip()).first()
     if not target: return "404: USER_NOT_FOUND", 404
-    projs = Project.query.filter_by(target_id=target.id).all() if hasattr(Project, 'target_id') else Project.query.filter_by(user_id=target.id).all()
+    projs = Project.query.filter_by(user_id=target.id).all()
     return render_template('profile.html', target=target, projects=projs)
 
+# Ekspor app untuk Vercel
+app = app
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)

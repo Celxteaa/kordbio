@@ -1,6 +1,6 @@
 Flask
 Flask-SQLAlchemy
-psycopg2-binary
+pg8000
 supabase
 python-dotenv
 groq
