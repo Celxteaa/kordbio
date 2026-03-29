@@ -36,8 +36,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
-    "pool_size": 10,
-    "max_overflow": 20,
     "connect_args": {
         "ssl": True  # Parameter SSL yang valid untuk pg8000
     }
@@ -124,7 +122,7 @@ def inject_notifications():
         ai_count = AILog.query.filter(AILog.user_id == user.id, db.func.date(AILog.timestamp) == today).count()
     return dict(user=user, unread_count=unread_count, ai_count=ai_count, now=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-# --- 0. HELPER ROUTES ---
+# --- 0. HELPER ROUTES (Pindahkan ke atas agar tidak tertabrak route /<username>) ---
 @app.route('/favicon.ico')
 @app.route('/favicon.png')
 def favicon():
@@ -472,6 +470,7 @@ def settings():
 
 @app.route('/<username>')
 def profile(username):
+    # Route ini harus diletakkan paling bawah agar tidak memakan route /login, /register, dll.
     target = User.query.filter_by(username=username.lower().strip()).first()
     if not target: return "404: USER_NOT_FOUND", 404
     projs = Project.query.filter_by(user_id=target.id).all()
