@@ -1,8 +1,9 @@
-Flask
-Flask-SQLAlchemy
-pg8000
-supabase
-python-dotenv
-groq
-requests
-werkzeug
+Flask==3.0.2
+Flask-SQLAlchemy==3.1.1
+pg8000==1.30.5
+psycopg2-binary
+supabase==2.3.7
+python-dotenv==1.0.1
+groq==0.4.2
+requests==2.31.0
+werkzeug==3.0.1
