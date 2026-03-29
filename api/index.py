@@ -19,26 +19,25 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_fina
 db_url = os.getenv("DATABASE_URL")
 
 if db_url:
-    # 1. Gunakan port 5432 (Direct) jika terdeteksi 6543 (Pooling) untuk stabilitas SQLAlchemy
+    # 1. Gunakan port 5432 (Direct) jika terdeteksi 6543 (Pooling)
     db_url = db_url.replace(":6543", ":5432")
     
-    # 2. Fix untuk dialek postgres & handler driver pg8000 (disarankan untuk lingkungan serverless)
+    # 2. Fix untuk dialek postgres & handler driver pg8000
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
     elif db_url.startswith("postgresql://") and "+pg8000" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
     
-    # 3. Bersihkan query parameters agar tidak bentrok dengan engine_options
+    # 3. Bersihkan query parameters
     if "?" in db_url:
         db_url = db_url.split("?")[0]
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Optimasi pooling untuk environment serverless (Vercel) dan Supabase
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
-    "pool_recycle": 280,  # Reset koneksi sebelum limit 300s Supabase
+    "pool_recycle": 280,
     "pool_size": 10,
     "max_overflow": 20,
     "connect_args": {
@@ -142,7 +141,8 @@ def login():
             username_input = request.form['username'].lower().strip()
             password_input = request.form['password']
             
-            u = User.query.filter_by(username=username_input).first()
+            # Gunakan ilike agar lebih fleksibel saat login
+            u = User.query.filter(User.username.ilike(username_input)).first()
             if u and check_password_hash(u.password_hash, password_input):
                 session['user_id'] = u.id
                 flash("ACCESS_GRANTED: Welcome back.", "success")
@@ -160,13 +160,13 @@ def register():
     if request.method == 'POST':
         try:
             username = request.form['username'].lower().strip()
-            reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook', 'favicon.ico', 'favicon.png']
+            reserved = ['login', 'register', 'dashboard', 'settings', 'logout', 'manage', 'api', 'chat', 'messages', 'upgrade', 'admin', 'webhook', 'favicon.ico', 'favicon.png', 'static']
             
             if username in reserved:
                 flash("SYSTEM_ERROR: Username reserved.", "error")
                 return redirect(url_for('register'))
             
-            if User.query.filter_by(username=username).first():
+            if User.query.filter(User.username.ilike(username)).first():
                 flash("SYSTEM_ERROR: Username already exists.", "error")
                 return redirect(url_for('register'))
 
@@ -297,7 +297,7 @@ def saweria_webhook():
     amount = data.get('amount_raw', 0)
     if "UPGRADE_" in message:
         target_username = message.replace("UPGRADE_", "").strip().lower()
-        user = User.query.filter_by(username=target_username).first()
+        user = User.query.filter(User.username.ilike(target_username)).first()
         if user:
             tier = 2 if amount >= 50000 else (1 if amount >= 15000 else 0)
             if tier > 0:
@@ -444,7 +444,7 @@ def messages_inbox():
 def chat(username):
     user = current_user()
     if not user: return redirect(url_for('login'))
-    target = User.query.filter_by(username=username.lower().strip()).first()
+    target = User.query.filter(User.username.ilike(username.lower().strip())).first()
     if not target: return redirect(url_for('index'))
     if request.method == 'POST':
         msg_text = request.form.get('message', '').strip()
@@ -482,7 +482,15 @@ def settings():
     user = current_user()
     if not user: return redirect(url_for('login'))
     if request.method == 'POST':
-        user.username = request.form.get('username', '').lower().strip()
+        new_username = request.form.get('username', '').lower().strip()
+        
+        # Cek jika username baru sudah dipakai orang lain
+        existing = User.query.filter(User.username.ilike(new_username)).first()
+        if existing and existing.id != user.id:
+            flash("SYSTEM_ERROR: Username exists.", "error")
+            return redirect(url_for('settings'))
+            
+        user.username = new_username
         user.bio = request.form.get('bio', '').strip()
         if user.is_premium > 0:
             user.custom_prefix = request.form.get('prefix', '>>')
@@ -492,18 +500,30 @@ def settings():
             flash("CONFIG_UPDATED.", "success")
         except:
             db.session.rollback()
-            flash("SYSTEM_ERROR: Username exists.", "error")
+            flash("SYSTEM_ERROR: Update failed.", "error")
         return redirect(url_for('settings'))
     return render_template('settings.html')
 
-# --- DYNAMIC PROFILE (PASTIKAN PALING BAWAH) ---
+# --- DYNAMIC PROFILE (CRITICAL FIX) ---
 @app.route('/<username>')
 def profile(username):
-    target = User.query.filter_by(username=username.lower().strip()).first()
+    # Membersihkan input dari URL
+    clean_username = username.lower().strip()
+    
+    # Gunakan .ilike() untuk pencarian case-insensitive di Postgres
+    target = User.query.filter(User.username.ilike(clean_username)).first()
+    
     if not target: 
-        return "404: USER_NOT_FOUND", 404
+        # Debugging log di console server
+        print(f"DEBUG: Profile not found for: {clean_username}")
+        return f"404: USER '{clean_username}' NOT FOUND", 404
+        
     projs = Project.query.filter_by(user_id=target.id).all()
-    return render_template('profile.html', target=target, projects=projs)
+    
+    # Ambil user saat ini untuk logika tombol interaction di profile
+    user_now = current_user()
+    
+    return render_template('profile.html', target=target, projects=projs, user=user_now)
 
 if __name__ == '__main__':
     app.run(debug=True)
