@@ -15,14 +15,14 @@ app = Flask(__name__,
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_final")
 
-# --- KONFIGURASI DATABASE (FIXED FOR STABILITY) ---
+# --- KONFIGURASI DATABASE (OPTIMIZED FOR SUPABASE/VERCEL) ---
 db_url = os.getenv("DATABASE_URL")
 
 if db_url:
     # 1. Gunakan port 5432 (Direct) jika terdeteksi 6543 (Pooling) untuk stabilitas SQLAlchemy
     db_url = db_url.replace(":6543", ":5432")
     
-    # 2. Fix untuk dialek postgres & handler driver pg8000
+    # 2. Fix untuk dialek postgres & handler driver pg8000 (disarankan untuk lingkungan serverless)
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
     elif db_url.startswith("postgresql://") and "+pg8000" not in db_url:
@@ -39,7 +39,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 280,  # Reset koneksi sebelum limit 300s Supabase
-    "connect_args": {} 
+    "pool_size": 10,
+    "max_overflow": 20,
+    "connect_args": {
+        "timeout": 30
+    }
 }
 
 db = SQLAlchemy(app)
@@ -496,7 +500,8 @@ def settings():
 @app.route('/<username>')
 def profile(username):
     target = User.query.filter_by(username=username.lower().strip()).first()
-    if not target: return "404: USER_NOT_FOUND", 404
+    if not target: 
+        return "404: USER_NOT_FOUND", 404
     projs = Project.query.filter_by(user_id=target.id).all()
     return render_template('profile.html', target=target, projects=projs)
 
