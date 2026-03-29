@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>KordBio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
@@ -13,11 +14,12 @@
         .btn-pixel:active { transform: translate(2px, 2px); border: 0; }
         
         /* Toast Alert */
-        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; left: 20px; pointer-events: none; }
         .pixel-toast {
             border: 4px solid #fff; background: #000; padding: 12px 20px; margin-bottom: 8px;
             font-size: 1.2rem; text-transform: uppercase; box-shadow: 6px 6px 0px #111;
-            animation: slideIn 0.3s ease-out forwards;
+            animation: slideIn 0.3s ease-out forwards; pointer-events: auto;
+            max-width: 400px; margin-left: auto;
         }
         .toast-success { border-color: #22c55e; color: #22c55e; }
         .toast-error { border-color: #ef4444; color: #ef4444; }
@@ -44,6 +46,8 @@
             white-space: pre !important;
             word-wrap: normal !important;
             word-break: normal !important;
+            /* Tambahan responsivitas untuk kode */
+            max-width: 100% !important;
         }
 
         code[class*="language-"] { 
@@ -80,7 +84,7 @@
         }
     </style>
 </head>
-<body class="flex min-h-screen">
+<body class="flex flex-col md:flex-row min-h-screen">
 
     <div id="modal-overlay" onclick="closeModal()"></div>
 
@@ -94,77 +98,77 @@
         {% endwith %}
     </div>
 
-    <nav class="w-64 border-r-4 border-zinc-900 p-6 flex flex-col gap-6 sticky h-screen top-0 bg-black">
-        <h1 class="text-4xl font-bold text-green-500 italic uppercase">KORDBIO</h1>
-        <div class="flex flex-col gap-4 text-2xl">
-            <a href="/" class="text-green-500 hover:underline">> HOME_FEED</a>
+    <nav class="w-full md:w-64 border-b-4 md:border-b-0 md:border-r-4 border-zinc-900 p-6 flex flex-col gap-4 md:gap-6 sticky top-0 bg-black z-[50] md:h-screen">
+        <h1 class="text-3xl md:text-4xl font-bold text-green-500 italic uppercase">KORDBIO</h1>
+        <div class="flex flex-row md:flex-col gap-4 text-xl md:text-2xl overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
+            <a href="/" class="text-green-500 hover:underline whitespace-nowrap">> HOME</a>
             {% if user %}
-            <a href="/dashboard" class="hover:text-blue-400">> DASHBOARD</a>
-            <a href="/messages" class="hover:text-yellow-400">> DIRECT_MESSAGES</a>
-            <a href="/settings" class="hover:text-blue-400">> UI_SETTINGS</a>
-            <a href="/logout" class="text-red-500 mt-10">/TERMINATE_SESSION</a>
+            <a href="/dashboard" class="hover:text-blue-400 whitespace-nowrap">> DASHBOARD</a>
+            <a href="/messages" class="hover:text-yellow-400 whitespace-nowrap">> MESSAGES</a>
+            <a href="/settings" class="hover:text-blue-400 whitespace-nowrap">> SETTINGS</a>
+            <a href="/logout" class="text-red-500 md:mt-10 whitespace-nowrap">/LOGOUT</a>
             {% else %}
-            <a href="/login" class="bg-white text-black p-2 text-center font-bold">LOGIN_SYSTEM</a>
+            <a href="/login" class="bg-white text-black px-4 py-1 md:p-2 text-center font-bold whitespace-nowrap">LOGIN</a>
             {% endif %}
         </div>
     </nav>
 
-    <main class="flex-grow max-w-2xl mx-auto p-8 w-full">
+    <main class="flex-grow max-w-2xl mx-auto p-4 md:p-8 w-full">
         {% if user %}
         <div class="border-4 border-blue-600 p-4 mb-10 bg-zinc-950 shadow-[8px_8px_0px_#111]">
             <h2 class="text-blue-400 mb-2 font-bold uppercase tracking-tighter">> AI_CELESTIA_CORTEX</h2>
             <div id="ai-out" class="min-h-[6rem] max-h-[600px] overflow-y-auto mb-4 text-white border-b border-zinc-800 text-xl leading-tight italic">
                 Awaiting neural input...
             </div>
-            <div class="flex gap-2">
-                <input type="text" id="ai-in" placeholder="Ask Celestia for code or tech info..." 
-                       class="flex-grow bg-black p-2 border border-zinc-700 outline-none text-xl focus:border-blue-500 text-white" 
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" id="ai-in" placeholder="Ask Celestia..." 
+                       class="flex-grow bg-black p-2 border border-zinc-700 outline-none text-xl focus:border-blue-500 text-white min-w-0" 
                        onkeydown="if(event.key==='Enter') askAI()">
-                <button onclick="askAI()" class="bg-blue-600 px-6 font-bold btn-pixel uppercase text-white">EXEC</button>
+                <button onclick="askAI()" class="bg-blue-600 px-6 py-2 sm:py-0 font-bold btn-pixel uppercase text-white">EXEC</button>
             </div>
         </div>
 
         <form action="{{ url_for('action_create_post') }}" method="POST" class="mb-12 border-4 border-zinc-800 p-4 bg-zinc-900 shadow-[8px_8px_0px_#111]">
             <h2 class="text-zinc-500 mb-2 uppercase tracking-widest text-sm">-- BROADCAST_NEW_ENTRY --</h2>
             <textarea name="content" class="w-full bg-black p-3 outline-none h-24 border-2 border-zinc-800 text-2xl focus:border-green-500 text-white" placeholder="Share your log update..." required></textarea>
-            <button class="mt-2 bg-green-600 px-8 py-1 font-bold text-black uppercase btn-pixel text-xl">SEND_TO_FEED</button>
+            <button class="mt-2 w-full sm:w-auto bg-green-600 px-8 py-1 font-bold text-black uppercase btn-pixel text-xl">SEND_TO_FEED</button>
         </form>
         {% endif %}
 
         <div class="space-y-12">
             <h2 class="text-zinc-700 uppercase tracking-[0.5em] text-center text-sm">-- GLOBAL_SYSTEM_LOGS --</h2>
             {% for post in posts %}
-            <div class="relative border-l-4 border-zinc-800 pl-6 py-2 group overflow-hidden">
+            <div class="relative border-l-4 border-zinc-800 pl-4 md:pl-6 py-2 group overflow-hidden">
                 <div class="flex items-center gap-3 mb-2 flex-wrap">
-                    <a href="/{{ post.username }}" class="text-green-400 text-2xl font-bold uppercase hover:underline">@{{ post.username }}</a>
+                    <a href="/{{ post.username }}" class="text-green-400 text-xl md:text-2xl font-bold uppercase hover:underline">@{{ post.username }}</a>
                     
                     {% if post.is_premium %}
-                    <span class="text-yellow-500 text-xs px-1 border border-yellow-500 font-bold tracking-tighter">★PREMIUM</span>
+                    <span class="text-yellow-500 text-[10px] md:text-xs px-1 border border-yellow-500 font-bold tracking-tighter">★PREMIUM</span>
                     {% endif %}
                     
                     {% if user and user.username != post.username %}
-                    <a href="/chat/{{ post.username }}" class="text-xs bg-zinc-800 border border-zinc-700 px-2 py-0.5 text-zinc-400 hover:text-white hover:border-blue-500 transition-all uppercase italic">
-                        [ INITIATE_CHAT_LINK ]
+                    <a href="/chat/{{ post.username }}" class="text-[10px] md:text-xs bg-zinc-800 border border-zinc-700 px-2 py-0.5 text-zinc-400 hover:text-white hover:border-blue-500 transition-all uppercase italic">
+                        [ CHAT ]
                     </a>
                     {% endif %}
                 </div>
 
-                <p class="text-3xl post-content mb-4">{{ post.content }}</p>
+                <p class="text-2xl md:text-3xl post-content mb-4">{{ post.content }}</p>
                 
-                <div class="flex justify-between items-center text-zinc-700 text-sm">
+                <div class="flex justify-between items-center text-zinc-700 text-xs md:text-sm">
                     <span>{{ post.timestamp }}</span>
                     {% if user and user.id == post.user_id %}
                     <button data-url="{{ url_for('action_delete_post', id=post.id) }}" 
                             onclick="handleDelete(this)" 
                             class="text-red-900 hover:text-red-500 uppercase font-bold transition-colors">
-                        [ DELETE_ENTRY ]
+                        [ DELETE ]
                     </button>
                     {% endif %}
                 </div>
             </div>
             {% else %}
             <div class="py-20 text-center">
-                <p class="text-zinc-600 italic text-2xl">NO_POSTS_FOUND_IN_DATABASE</p>
+                <p class="text-zinc-600 italic text-xl md:text-2xl">NO_POSTS_FOUND_IN_DATABASE</p>
             </div>
             {% endfor %}
         </div>
@@ -175,6 +179,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
 
     <script>
+    /* Logika JavaScript tetap sama 100% */
     function initToasts() {
         const toasts = document.querySelectorAll('.pixel-toast');
         toasts.forEach(t => {
@@ -251,7 +256,7 @@
 
         const modal = document.createElement('div');
         modal.id = "active-modal";
-        modal.className = 'pixel-toast toast-warning fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-red-600 z-[9999] text-center w-80';
+        modal.className = 'pixel-toast toast-warning fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-red-600 z-[9999] text-center w-80 max-w-[90vw]';
         modal.innerHTML = `
             <p class="mb-6">CRITICAL: WIPE DATA FROM FEED? THIS ACTION IS IRREVERSIBLE.</p>
             <div class="flex gap-4 justify-center">
