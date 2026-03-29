@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ target.username }} | NODE_PROFILE</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'VT323', monospace; image-rendering: pixelated; }
+        
+        /* Theme Logic */
+        .theme-dark { background: #050505; color: #fff; --p: #22c55e; }
+        .theme-emerald { background: #064e3b; color: #ecfdf5; --p: #10b981; }
+        .theme-ruby { background: #450a0a; color: #fef2f2; --p: #ef4444; }
+        
+        .p-card { 
+            border: 4px solid var(--p); 
+            background: rgba(0,0,0,0.8); 
+            box-shadow: 10px 10px 0px #000;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-retro {
+            border: 2px solid currentColor;
+            transition: 0.1s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-retro:hover {
+            background: white;
+            color: black;
+            border-color: white;
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0px var(--p);
+        }
+
+        /* Scanline effect for premium nodes */
+        .premium-scanline::after {
+            content: " ";
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="theme-{{ target.theme }} min-h-screen p-8 transition-colors duration-500" 
+      data-is-premium="{{ 'true' if target.is_premium else 'false' }}"
+      data-glow-color="{{ target.profile_glow or '' }}">
+
+    <div class="max-w-3xl mx-auto">
+        
+        <div class="mb-6 flex justify-between items-center">
+            <a href="/" class="text-2xl px-4 py-1 btn-retro uppercase font-bold shadow-[4px_4px_0px_#000]">
+                < RETURN_TO_FEED
+            </a>
+            
+            <div class="flex gap-2">
+                {% if target.is_premium == 1 %}
+                <span class="bg-blue-600 text-white px-3 py-1 font-bold text-xl shadow-[4px_4px_0px_#000]">
+                    [ BIT_CITIZEN ]
+                </span>
+                {% elif target.is_premium == 2 %}
+                <span class="bg-yellow-500 text-black px-3 py-1 font-bold text-xl shadow-[4px_4px_0px_#000] border-2 border-white animate-pulse">
+                    [ CORE_OVERLORD ]
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <header id="profile-header" class="p-card p-10 mb-10 {% if target.is_premium %}premium-scanline{% endif %}">
+            <div class="absolute top-0 right-0 p-4 opacity-10 text-9xl font-bold select-none">
+                {{ "02" if target.is_premium else "01" }}
+            </div>
+
+            <div class="relative z-10">
+                <h1 class="text-7xl font-bold uppercase leading-none mb-2 tracking-tighter flex items-baseline gap-3">
+                    {% if target.is_premium %}
+                    <span id="prefix-span" class="text-3xl opacity-50">{{ target.custom_prefix }}</span>
+                    {% endif %}
+                    
+                    <span id="username-span">{{ target.username }}</span>
+                </h1>
+                
+                <p class="text-3xl opacity-80 mb-6 max-w-xl">{{ target.bio }}</p>
+                
+                <div class="flex flex-wrap gap-4">
+                    {% if user %}
+                        {% if user.id != target.id %}
+                            <a href="{{ url_for('chat', username=target.username) }}" 
+                               class="bg-white text-black px-8 py-3 font-bold uppercase text-3xl shadow-[6px_6px_0px_var(--p)] hover:bg-[var(--p)] hover:text-white transition-all flex items-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>
+                                ESTABLISH_COMM
+                            </a>
+                        {% else %}
+                            <a href="/settings" class="btn-retro text-2xl px-6 py-2 uppercase font-bold opacity-60">
+                                EDIT_MY_NODE
+                            </a>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-xl italic opacity-50 underline">[ LOGIN_TO_INTERACT_WITH_THIS_USER ]</p>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+        <h2 class="text-4xl mb-6 italic underline uppercase tracking-widest flex items-center gap-4">
+            <span class="h-[2px] w-12 bg-current"></span>
+            Project_Showcase
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {% for p in projects %}
+            <div class="border-4 border-white/20 p-6 bg-black/40 shadow-[6px_6px_0px_rgba(0,0,0,0.5)] hover:border-[var(--p)] transition-colors group relative">
+                {% if target.is_premium %}
+                <div class="absolute top-0 right-0 w-2 h-2 bg-[var(--p)] m-2 shadow-[0_0_5px_var(--p)]"></div>
+                {% endif %}
+                
+                <h3 class="text-3xl font-bold text-[var(--p)] mb-2 group-hover:underline">{{ p.title }}</h3>
+                <p class="text-xl opacity-70 leading-tight mb-4 min-h-[3rem]">{{ p.description }}</p>
+                <a href="{{ p.link }}" target="_blank" class="text-blue-400 text-xl font-bold hover:text-white flex items-center gap-2">
+                    >> ACCESS_LINK
+                </a>
+            </div>
+            {% endfor %}
+            
+            {% if not projects %}
+            <div class="col-span-full py-16 text-center border-4 border-dashed border-white/10 opacity-40 text-2xl italic">
+                -- NO_PROJECTS_REGISTERED_IN_THIS_NODE --
+            </div>
+            {% endif %}
+        </div>
+
+        <footer class="mt-20 pt-10 border-t-2 border-white/10 text-center opacity-30 text-xl uppercase tracking-tighter">
+            KordBio // Node_Scan_Complete // TIER_{{ target.is_premium }}
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * Menggunakan dataset untuk menghindari error diagnostic di VS Code.
+         * JavaScript membaca data dari atribut HTML, bukan langsung dari Jinja.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const bodyData = document.body.dataset;
+            const isPremium = bodyData.isPremium === "true";
+            const glowColor = bodyData.glowColor;
+            
+            if (isPremium && glowColor) {
+                const header = document.getElementById('profile-header');
+                const username = document.getElementById('username-span');
+                const prefix = document.getElementById('prefix-span');
+
+                if (header) {
+                    header.style.borderColor = glowColor;
+                    header.style.boxShadow = `10px 10px 0px #000, 0 0 20px ${glowColor}`;
+                }
+
+                if (username) {
+                    username.style.textShadow = `0 0 10px ${glowColor}`;
+                }
+
+                if (prefix) {
+                    prefix.style.color = glowColor;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

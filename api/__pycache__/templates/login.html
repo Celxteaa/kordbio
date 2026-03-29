@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            font-family: 'VT323', monospace; 
+            background-color: #020202;
+            color: #3b82f6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* --- Cyber Frame --- */
+        .cyber-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border: 15px solid #080808;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .corner {
+            position: absolute; width: 30px; height: 30px;
+            border: 3px solid #3b82f6; z-index: 60;
+        }
+        .top-left { top: 5px; left: 5px; border-right: 0; border-bottom: 0; }
+        .top-right { top: 5px; right: 5px; border-left: 0; border-bottom: 0; }
+        .bottom-left { bottom: 5px; left: 5px; border-right: 0; border-top: 0; }
+        .bottom-right { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
+
+        /* --- Red Glitch Title (VT323) --- */
+        .glitch-title {
+            font-family: 'VT323', monospace;
+            font-size: 4.5rem;
+            line-height: 1;
+            text-transform: uppercase;
+            position: relative;
+            color: #fff;
+            /* Ganti Ungu ke Merah (#ff0000) */
+            text-shadow: 0.05em 0 0 #ff0000, -0.025em -0.05em 0 #00ffff,
+                         0.025em 0.05em 0 #ff0000;
+            animation: glitch 700ms infinite;
+        }
+
+        @keyframes glitch {
+            0% { text-shadow: 0.05em 0 0 #ff0000, -0.05em -0.025em 0 #00ffff; transform: translate(2px, 0); }
+            15% { text-shadow: -0.05em -0.025em 0 #ff0000, 0.025em 0.025em 0 #00ffff; transform: translate(-2px, -1px); }
+            50% { text-shadow: 0.025em 0.05em 0 #ff0000, 0.05em 0 0 #00ffff; transform: translate(1px, 2px); }
+            100% { text-shadow: -0.025em 0 0 #ff0000, -0.025em -0.025em 0 #00ffff; transform: translate(0); }
+        }
+
+        .input-container {
+            width: 100%;
+            max-width: 450px;
+            padding: 2rem;
+            background: rgba(5, 5, 5, 0.9);
+            border: 1px solid #1e3a8a;
+            position: relative;
+        }
+
+        .cyber-input {
+            width: 100%;
+            background: #000;
+            border: 2px solid #1e3a8a;
+            padding: 12px;
+            color: #fff;
+            font-size: 1.5rem;
+            outline: none;
+            margin-bottom: 1.2rem;
+        }
+
+        .cyber-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-execute {
+            width: 100%;
+            background: #3b82f6;
+            color: #000;
+            font-size: 1.8rem;
+            padding: 8px;
+            font-weight: bold;
+            clip-path: polygon(4% 0, 100% 0, 100% 75%, 96% 100%, 0 100%, 0 25%);
+            transition: 0.2s;
+        }
+
+        .btn-execute:active { transform: scale(0.97); background: #fff; }
+
+        @media (max-width: 640px) {
+            .glitch-title { font-size: 3rem; }
+            .cyber-bg { border-width: 8px; }
+            .input-container { padding: 1.5rem; width: 92%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cyber-bg">
+        <div class="corner top-left"></div><div class="corner top-right"></div>
+        <div class="corner bottom-left"></div><div class="corner bottom-right"></div>
+    </div>
+
+    <div class="z-10 flex flex-col items-center w-full px-4">
+        <h1 class="glitch-title mb-6">LOGIN_ACCESS</h1>
+
+        <div class="input-container">
+            <div class="mb-4 flex justify-between text-xs opacity-50 uppercase tracking-widest font-sans">
+                <span>Secure_Login</span>
+                <span>Node_07</span>
+            </div>
+
+            <form action="/login" method="POST">
+                <input type="text" name="username" class="cyber-input" placeholder=">> USER_ID" required autocomplete="off">
+                <input type="password" name="password" class="cyber-input" placeholder=">> PASS_KEY" required>
+                <button type="submit" class="btn-execute uppercase">AUTHENTICATE</button>
+            </form>
+
+            <div class="mt-8 text-center border-t border-blue-900 pt-6">
+                <a href="/register" class="text-xl text-blue-400 hover:text-white transition-all underline decoration-dotted">
+                    [ NEW_UNIT_REGISTRATION ]
+                </a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

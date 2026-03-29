@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | KordBio</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'VT323', monospace; background: #000; color: #fff; overflow-x: hidden; }
+        .btn-pixel { border-bottom: 4px solid #111; border-right: 4px solid #111; transition: 0.1s; cursor: pointer; display: inline-block; }
+        .btn-pixel:active { transform: translate(2px, 2px); border: 0; }
+        
+        /* Toast Alert Style */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; left: 20px; pointer-events: none; }
+        .pixel-toast {
+            border: 4px solid #fff; background: #000; padding: 12px 20px; margin-bottom: 8px;
+            font-size: 1.2rem; text-transform: uppercase; box-shadow: 6px 6px 0px #111;
+            animation: slideIn 0.3s ease-out forwards; pointer-events: auto;
+            max-width: 400px; margin-left: auto;
+        }
+        .toast-success { border-color: #22c55e; color: #22c55e; }
+        .toast-error { border-color: #ef4444; color: #ef4444; }
+        .toast-warning { border-color: #f59e0b; color: #f59e0b; }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 9998; display: none;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Mobile Nav Toggle */
+        #mobile-menu { display: none; }
+        @media (max-width: 768px) {
+            #mobile-menu:checked ~ nav { transform: translateX(0); }
+            nav { transform: translateX(-100%); transition: transform 0.3s ease; z-index: 10000; position: fixed; }
+            .main-content { padding: 1.5rem !important; }
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border: 2px solid #0a0a0a; }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row min-h-screen">
+
+    <div id="modal-overlay" onclick="closeModal()"></div>
+
+    <div class="md:hidden bg-zinc-950 border-b-4 border-zinc-900 p-4 flex justify-between items-center sticky top-0 z-[1001]">
+        <h1 class="text-2xl font-bold text-blue-500 italic">CONTROL_PANEL</h1>
+        <label for="mobile-menu" class="text-white text-3xl cursor-pointer">☰</label>
+    </div>
+    <input type="checkbox" id="mobile-menu" class="hidden">
+
+    <div class="toast-container" id="toast-box">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="pixel-toast toast-{{ category }}">>> {{ message }}</div>
+            {% endfor %}
+          {% endif %} {% endwith %}
+    </div>
+
+    <nav class="w-64 border-r-4 border-zinc-900 p-6 flex flex-col gap-4 h-full md:h-screen sticky top-0 bg-black shrink-0">
+        <h1 class="hidden md:block text-3xl font-bold text-blue-500 uppercase italic mb-4">Control_Panel</h1>
+        <div class="flex flex-col gap-2 text-2xl">
+            <a href="/" class="hover:text-blue-400">> BACK_TO_FEED</a>
+            <a href="/settings" class="hover:text-green-400">> PROFILE_SETTINGS</a>
+            <a href="/logout" class="text-red-500 mt-6 md:mt-10">/LOGOUT</a>
+            
+            {% if user.username == 'admin cel' %}
+            <div class="mt-4 p-2 border-2 border-dashed border-yellow-500 bg-yellow-900/20">
+                <p class="text-yellow-500 text-xs mb-2">// ADMIN_PRIVILEGE_DETECTED</p>
+                <a href="{{ url_for('admin_verify') }}" 
+                class="block text-center bg-yellow-600 text-black font-bold py-1 hover:bg-yellow-400 text-sm">
+                OPEN_VERIFICATION_PANEL
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        <label for="mobile-menu" class="md:hidden mt-auto text-center border-2 border-zinc-700 p-2 opacity-50 text-xl">CLOSE_MENU</label>
+    </nav>
+
+    <main class="main-content flex-grow p-4 md:p-10 max-w-5xl mx-auto w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-10">
+            <div class="border-4 border-zinc-800 p-4 md:p-6 bg-zinc-900 shadow-[6px_6px_0px_#111]">
+                <h2 class="text-xl md:text-2xl text-zinc-500 uppercase">Account_Status</h2>
+                <div class="py-2">
+                    <p class="text-3xl md:text-4xl font-bold break-words">
+                        {% if user.is_premium == 2 %}
+                            <span class="text-yellow-500">★ CORE_OVERLORD</span>
+                        {% elif user.is_premium == 1 %}
+                            <span class="text-blue-400">★ BIT_CITIZEN</span>
+                        {% else %}
+                            <span class="text-zinc-400">FREE_USER</span>
+                        {% endif %}
+                    </p>
+                </div>
+                
+                {% if user.is_premium < 2 %}
+                <a href="{{ url_for('upgrade_landing') }}" class="mt-4 inline-block bg-yellow-500 text-black px-4 py-1 font-bold uppercase text-lg md:text-xl btn-pixel w-full text-center md:w-auto">
+                    [ {% if user.is_premium == 1 %}EVOLVE_TO_OVERLORD{% else %}RUN_UPGRADE.EXE{% endif %} ]
+                </a>
+                {% endif %}
+                
+                <p class="mt-4 text-lg md:text-xl">AI Usage: <span class="text-blue-400">{{ ai_count }}{{ '/5' if not user.is_premium else ' (UNLIMITED)' }}</span></p>
+            </div>
+
+            <div class="border-4 border-zinc-800 p-4 md:p-6 bg-zinc-900 shadow-[6px_6px_0px_#111]">
+                <h2 class="text-xl md:text-2xl text-zinc-500 uppercase mb-4">New_Project_Deployment</h2>
+                <form action="{{ url_for('dashboard') }}" method="POST" class="space-y-3">
+                    <input type="text" name="title" placeholder="Title" class="w-full bg-black border border-zinc-700 p-2 text-lg md:text-xl outline-none focus:border-blue-500 text-white" required>
+                    <input type="text" name="desc" placeholder="Description" class="w-full bg-black border border-zinc-700 p-2 text-lg md:text-xl outline-none focus:border-blue-500 text-white" required>
+                    <input type="url" name="link" placeholder="https://..." class="w-full bg-black border border-zinc-700 p-2 text-lg md:text-xl outline-none focus:border-blue-500 text-white" required>
+                    <button type="submit" class="w-full bg-blue-600 p-2 font-bold uppercase hover:bg-blue-400 text-white transition-colors btn-pixel">DEPLOY_PROJECT</button>
+                </form>
+            </div>
+        </div>
+
+        <h2 class="text-2xl md:text-3xl mb-4 italic underline uppercase tracking-widest">Manage_Portfolio</h2>
+        <div class="space-y-4">
+            {% for p in projects %}
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-2 border-zinc-800 p-4 hover:bg-zinc-900 transition-colors bg-black gap-4">
+                <div class="w-full">
+                    <h3 class="text-xl md:text-2xl font-bold text-green-400 uppercase break-all">{{ p.title }}</h3>
+                    <p class="text-zinc-500 italic text-base md:text-lg">{{ p.description }}</p>
+                </div>
+                <div class="flex gap-4 w-full md:w-auto justify-end md:justify-start border-t border-zinc-800 pt-3 md:pt-0 md:border-0">
+                    <a href="{{ p.link }}" target="_blank" class="text-blue-500 hover:text-white underline text-lg md:text-xl">[VIEW]</a>
+                    <button type="button" 
+                            data-delete-url="{{ url_for('action_delete_project', id=p.id) }}"
+                            onclick="handleDeleteClick(this)" 
+                            class="text-red-500 hover:text-red-300 font-bold text-lg md:text-xl">
+                        [DELETE]
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="py-20 text-center border-4 border-dashed border-zinc-900 opacity-30">
+                <p class="text-2xl md:text-3xl italic">-- NO_PROJECTS_DEPLOYED_YET --</p>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <script>
+    function initToasts() {
+        const toasts = document.querySelectorAll('.pixel-toast');
+        toasts.forEach(t => {
+            setTimeout(() => {
+                t.style.transition = "0.5s";
+                t.style.opacity = "0";
+                setTimeout(() => t.remove(), 500);
+            }, 4000);
+        });
+    }
+    initToasts();
+
+    function handleDeleteClick(btn) {
+        const url = btn.getAttribute('data-delete-url');
+        if (url) confirmErase(url);
+    }
+
+    function confirmErase(deleteUrl) {
+        const overlay = document.getElementById('modal-overlay');
+        overlay.style.display = 'block';
+
+        const oldModal = document.getElementById('active-modal');
+        if(oldModal) oldModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = "active-modal";
+        // Modal responsif lebar
+        modal.className = 'pixel-toast toast-warning fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-red-600 z-[10002] text-center w-[90%] max-w-sm';
+        modal.innerHTML = `
+            <p class="mb-6 text-base md:text-xl">CRITICAL: WIPE PROJECT DATA? THIS ACTION IS IRREVERSIBLE.</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="${deleteUrl}" class="bg-red-600 text-white px-4 py-2 btn-pixel font-bold text-center">[ YES_ERASE ]</a>
+                <button onclick="closeModal()" class="bg-zinc-800 text-white px-4 py-2 btn-pixel font-bold">[ CANCEL ]</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('active-modal');
+        const overlay = document.getElementById('modal-overlay');
+        const menuToggle = document.getElementById('mobile-menu');
+        if(modal) modal.remove();
+        overlay.style.display = 'none';
+        menuToggle.checked = false; // Auto close menu if overlay clicked
+    }
+    </script>
+</body>
+</html>

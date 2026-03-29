@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KordBio | ADMIN_CORE_ACCESS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        body { font-family: 'VT323', monospace; background-color: #050505; color: #22c55e; }
+        .pixel-border { border: 2px solid #22c55e; }
+        .glitch-text { text-shadow: 2px 0 #ff0000, -2px 0 #0000ff; }
+        .btn-approve { background: #22c55e; color: #000; transition: all 0.2s; }
+        .btn-approve:hover { background: #4ade80; box-shadow: 0 0 15px #22c55e; }
+        .btn-revoke { border: 1px solid #ef4444; color: #ef4444; transition: all 0.2s; }
+        .btn-revoke:hover { background: #ef4444; color: #000; box-shadow: 0 0 10px #ef4444; }
+        tr:hover { background: rgba(34, 197, 94, 0.05); }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8 border-b-4 border-double border-green-900 pb-4">
+            <h1 class="text-4xl uppercase glitch-text">[ CENTRAL_VERIFICATION_KERNEL ]</h1>
+            <p class="text-green-800">Operator: {{ user.username.upper() }} // Status: ONLINE</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-4 p-2 bg-green-900/30 border border-{{ 'green' if category == 'success' else 'red' if category == 'warning' else 'green' }}-500 text-sm">
+                >> {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <h2 class="text-2xl mb-4 text-white uppercase tracking-widest">[ PENDING_UPGRADE_REQUESTS ]</h2>
+        <div class="overflow-x-auto mb-12 border-t border-green-900 pt-4">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b-2 border-green-900 text-xl text-white">
+                        <th class="p-4">USER_ID</th>
+                        <th class="p-4">USERNAME</th>
+                        <th class="p-4">TIER</th>
+                        <th class="p-4">PROOF</th>
+                        <th class="p-4 text-center">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody class="text-lg">
+                    {% if not pending %}
+                    <tr>
+                        <td colspan="5" class="p-10 text-center text-green-900 italic">
+                            -- NO_PENDING_TRANSACTIONS_DETECTED --
+                        </td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% for p in pending %}
+                    <tr class="border-b border-green-900/30">
+                        <td class="p-4 text-green-700">#{{ p.user_id }}</td>
+                        <td class="p-4 font-bold text-white">{{ p.username }}</td>
+                        <td class="p-4">
+                            <span class="{{ 'text-yellow-500' if p.tier == 1 else 'text-purple-500 font-bold' }}">
+                                [{{ 'BIT_CITIZEN' if p.tier == 1 else 'CORE_OVERLORD' }}]
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            <div class="relative group cursor-pointer">
+                                <img src="data:image/png;base64,{{ p.proof_image }}" 
+                                     class="w-20 h-12 object-cover pixel-border hover:scale-110 transition-transform"
+                                     onclick="window.open(this.src)">
+                            </div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <a href="{{ url_for('action_approve', conf_id=p.id, user_id=p.user_id, tier=p.tier) }}" 
+                               class="btn-approve px-4 py-1 font-bold uppercase tracking-tighter">
+                                EXECUTE_UPGRADE
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="text-2xl mb-4 text-white uppercase tracking-widest">[ ACTIVE_PREMIUM_NODES ]</h2>
+        <div class="overflow-x-auto border-t border-green-900 pt-4">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b-2 border-green-900 text-xl text-white">
+                        <th class="p-4">USER_ID</th>
+                        <th class="p-4">USERNAME</th>
+                        <th class="p-4">STATUS</th>
+                        <th class="p-4 text-center">REVOKE_ACCESS</th>
+                    </tr>
+                </thead>
+                <tbody class="text-lg">
+                    {% if not active_users %}
+                    <tr>
+                        <td colspan="4" class="p-10 text-center text-green-900 italic">
+                            -- NO_ACTIVE_PREMIUM_NODES --
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% for au in active_users %}
+                    <tr class="border-b border-green-900/30">
+                        <td class="p-4 text-green-700">#{{ au.id }}</td>
+                        <td class="p-4 text-white">{{ au.username }}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-0.5 border border-green-500 text-xs">
+                                {{ 'BIT_CITIZEN' if au.is_premium == 1 else 'CORE_OVERLORD' }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <a href="{{ url_for('action_revoke', user_id=au.id) }}" 
+                               onclick="return confirm('WARNING: DISCONNECT_PREMIUM_ACCESS for {{ au.username }}?')"
+                               class="btn-revoke px-3 py-1 text-xs uppercase font-bold">
+                                [ REVOKE_NODE ]
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-12">
+            <a href="{{ url_for('dashboard') }}" class="text-green-900 hover:text-green-400">
+                << RETURN_TO_SYSTEM_DASHBOARD
+            </a>
+        </div>
+    </div>
+</body>
+</html>
