@@ -34,15 +34,12 @@ if db_url:
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# REVISI ENGINE OPTIONS: 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
     "pool_size": 10,
     "max_overflow": 20,
-    "connect_args": {
-        # 'ssl' dihapus karena menyebabkan TypeError pada pg8000
-    }
+    "connect_args": {} # Kosong untuk pg8000 compatibility
 }
 
 db = SQLAlchemy(app)
@@ -112,7 +109,6 @@ with app.app_context():
 
 def current_user():
     if 'user_id' in session:
-        # Menggunakan session.get untuk menghindari error jika id tidak ditemukan
         return db.session.get(User, session['user_id'])
     return None
 
@@ -127,7 +123,7 @@ def inject_notifications():
         ai_count = AILog.query.filter(AILog.user_id == user.id, db.func.date(AILog.timestamp) == today).count()
     return dict(user=user, unread_count=unread_count, ai_count=ai_count, now=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-# --- 0. HELPER ROUTES ---
+# --- 0. HELPER & PRIORITY ROUTES ---
 @app.route('/favicon.ico')
 @app.route('/favicon.png')
 def favicon():
@@ -378,9 +374,8 @@ def index():
             Post.id, Post.content, Post.timestamp, Post.user_id,
             User.username, User.is_premium
         ).join(User, Post.user_id == User.id).order_by(Post.timestamp.desc()).all()
-    except:
+    except Exception:
         posts_data = []
-    
     return render_template('index.html', posts=posts_data, user=user)
 
 @app.route('/messages')
@@ -388,37 +383,40 @@ def messages_inbox():
     user = current_user()
     if not user: return redirect(url_for('login'))
     
-    chat_list_raw = db.session.execute(db.text('''
-        SELECT 
-            u.username, 
-            u.id as target_id, 
-            u.is_premium, 
-            u.profile_glow, 
-            m.message as last_msg, 
-            m.timestamp,
-            (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = :uid AND is_read = 0) as unread_count
-        FROM users u
-        JOIN messages m ON (u.id = m.sender_id OR u.id = m.receiver_id)
-        WHERE (m.sender_id = :uid OR m.receiver_id = :uid) AND u.id != :uid
-        AND m.id = (
-            SELECT id FROM messages 
-            WHERE (sender_id = :uid AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = :uid)
-            ORDER BY timestamp DESC LIMIT 1
-        )
-        ORDER BY m.timestamp DESC
-    '''), {'uid': user.id}).fetchall()
-    
-    formatted_chats = []
-    for row in chat_list_raw:
-        formatted_chats.append({
-            'username': row.username,
-            'target_id': row.target_id,
-            'is_premium': row.is_premium,
-            'profile_glow': row.profile_glow,
-            'last_msg': row.last_msg,
-            'timestamp': str(row.timestamp),
-            'unread_count': row.unread_count
-        })
+    try:
+        chat_list_raw = db.session.execute(db.text('''
+            SELECT 
+                u.username, 
+                u.id as target_id, 
+                u.is_premium, 
+                u.profile_glow, 
+                m.message as last_msg, 
+                m.timestamp,
+                (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = :uid AND is_read = 0) as unread_count
+            FROM users u
+            JOIN messages m ON (u.id = m.sender_id OR u.id = m.receiver_id)
+            WHERE (m.sender_id = :uid OR m.receiver_id = :uid) AND u.id != :uid
+            AND m.id = (
+                SELECT id FROM messages 
+                WHERE (sender_id = :uid AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = :uid)
+                ORDER BY timestamp DESC LIMIT 1
+            )
+            ORDER BY m.timestamp DESC
+        '''), {'uid': user.id}).fetchall()
+        
+        formatted_chats = []
+        for row in chat_list_raw:
+            formatted_chats.append({
+                'username': row.username,
+                'target_id': row.target_id,
+                'is_premium': row.is_premium,
+                'profile_glow': row.profile_glow,
+                'last_msg': row.last_msg,
+                'timestamp': str(row.timestamp),
+                'unread_count': row.unread_count
+            })
+    except Exception:
+        formatted_chats = []
         
     return render_template('messages.html', chat_list=formatted_chats, user=user)
 
@@ -476,16 +474,13 @@ def settings():
         return redirect(url_for('settings'))
     return render_template('settings.html')
 
+# --- DYNAMIC PROFILE (PASTIKAN PALING BAWAH) ---
 @app.route('/<username>')
 def profile(username):
     target = User.query.filter_by(username=username.lower().strip()).first()
     if not target: return "404: USER_NOT_FOUND", 404
-    # PERBAIKAN: Gunakan filter_by(user_id=target.id) bukan filter_by(target.id)
     projs = Project.query.filter_by(user_id=target.id).all()
     return render_template('profile.html', target=target, projects=projs)
-
-# Ekspor app untuk Vercel
-app = app
 
 if __name__ == '__main__':
     app.run(debug=True)
