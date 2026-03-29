@@ -15,29 +15,37 @@ app = Flask(__name__,
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_final")
 
-# --- KONFIGURASI DATABASE (OPTIMIZED FOR VERCEL & PG8000) ---
+# --- KONFIGURASI DATABASE (FIXED FOR VERCEL & PG8000) ---
 db_url = os.getenv("DATABASE_URL")
 
 if db_url:
-    # 1. Pastikan menggunakan postgresql+pg8000
+    # Fix untuk dialek postgres di SQLAlchemy 1.4+
     if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
-    elif db_url.startswith("postgresql://") and "+pg8000" not in db_url:
-        db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
-
-    # 2. Bersihkan query strings agar tidak terjadi konflik keyword argument 'ssl'
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    
+    # Hapus query parameters (?sslmode=...) agar tidak bentrok dengan engine_options
     if "?" in db_url:
         db_url = db_url.split("?")[0]
+    
+    # Tambahkan handler driver pg8000
+    if "postgresql+pg8000" not in db_url:
+        db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# 3. Optimasi Engine Options: Menggunakan ssl=True secara eksplisit untuk pg8000
+# REVISI ENGINE OPTIONS: 
+# Menghapus "ssl": True yang menyebabkan TypeError.
+# Untuk pg8000 di cloud provider kebanyakan, ssl=True otomatis aktif jika portnya 5432/SSL.
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
+    "pool_size": 10,
+    "max_overflow": 20,
     "connect_args": {
-        "ssl": True  # pg8000 menerima boolean True untuk mengaktifkan SSL
+        # Jika masih butuh SSL eksplisit untuk pg8000, gunakan 'ssl_context' 
+        # tapi biasanya di Vercel/Neon/Supabase ini tidak perlu ditulis manual
+        # jika menggunakan skema postgresql+pg8000://
     }
 }
 
@@ -472,9 +480,10 @@ def settings():
 def profile(username):
     target = User.query.filter_by(username=username.lower().strip()).first()
     if not target: return "404: USER_NOT_FOUND", 404
-    projs = Project.query.filter_by(user_id=target.id).all()
+    projs = Project.query.filter_by(target.id).all()
     return render_template('profile.html', target=target, projects=projs)
 
+# Ekspor app untuk Vercel
 app = app
 
 if __name__ == '__main__':
