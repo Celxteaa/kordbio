@@ -446,11 +446,12 @@ def chat(username):
     user_obj = current_user()
     if not user_obj: return redirect(url_for('login'))
     
-    # Perbaikan: Tambahkan unquote di sini juga untuk konsistensi
+    # 1. Decode & Clean username tujuan
     clean_target_name = unquote(username).lower().strip()
     target = User.query.filter(User.username.ilike(clean_target_name)).first()
     
-    if not target: return redirect(url_for('index'))
+    if not target: 
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         msg_text = request.form.get('message', '').strip()
@@ -458,8 +459,11 @@ def chat(username):
             new_msg = Message(sender_id=user_obj.id, receiver_id=target.id, message=msg_text)
             db.session.add(new_msg)
             db.session.commit()
-            return redirect(url_for('chat', username=username))
+            
+            # 2. Redirect HARUS ke route chat lagi secara eksplisit
+            return redirect(url_for('chat', username=target.username))
     
+    # 3. Mark as read & Load messages
     Message.query.filter_by(sender_id=target.id, receiver_id=user_obj.id).update({Message.is_read: 1})
     db.session.commit()
     
@@ -510,14 +514,12 @@ def settings():
         return redirect(url_for('settings'))
     return render_template('settings.html', user=user_obj)
 
-# --- DYNAMIC PROFILE (THE FINAL FIX) ---
+# --- DYNAMIC PROFILE ---
 @app.route('/<username>/') 
 @app.route('/<username>')
 def profile(username):
-    # 1. Bersihkan input & Decode %20 menjadi spasi (Penting!)
     clean_username = unquote(username).lower().strip()
     
-    # 2. Proteksi folder statis & routes inti (Ditambah agar lebih aman)
     reserved_paths = [
         'static', 'favicon.ico', 'favicon.png', 'robots.txt', 
         'login', 'register', 'dashboard', 'settings', 'logout',
@@ -526,7 +528,6 @@ def profile(username):
     if clean_username in reserved_paths:
         return "", 204
 
-    # 3. Query Target dengan Case Insensitive
     target = User.query.filter(User.username.ilike(clean_username)).first()
     
     if not target: 
