@@ -27,7 +27,7 @@ if db_url:
     if "?" in db_url:
         db_url = db_url.split("?")[0]
     
-    # Tambahkan handler driver pg8000
+    # Tambahkan handler driver pg8000 secara eksplisit
     if "postgresql+pg8000" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
@@ -35,17 +35,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # REVISI ENGINE OPTIONS: 
-# Menghapus "ssl": True yang menyebabkan TypeError.
-# Untuk pg8000 di cloud provider kebanyakan, ssl=True otomatis aktif jika portnya 5432/SSL.
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
     "pool_size": 10,
     "max_overflow": 20,
     "connect_args": {
-        # Jika masih butuh SSL eksplisit untuk pg8000, gunakan 'ssl_context' 
-        # tapi biasanya di Vercel/Neon/Supabase ini tidak perlu ditulis manual
-        # jika menggunakan skema postgresql+pg8000://
+        # 'ssl' dihapus karena menyebabkan TypeError pada pg8000
     }
 }
 
@@ -116,7 +112,8 @@ with app.app_context():
 
 def current_user():
     if 'user_id' in session:
-        return User.query.get(session['user_id'])
+        # Menggunakan session.get untuk menghindari error jika id tidak ditemukan
+        return db.session.get(User, session['user_id'])
     return None
 
 @app.context_processor
@@ -350,8 +347,8 @@ def admin_verify():
 def action_approve(conf_id, user_id, tier):
     user = current_user()
     if not user or user.username != 'admin cel': return "UNAUTHORIZED", 403
-    u = User.query.get(user_id)
-    c = Confirmation.query.get(conf_id)
+    u = db.session.get(User, user_id)
+    c = db.session.get(Confirmation, conf_id)
     if u and c:
         u.is_premium = tier
         c.status = 'APPROVED'
@@ -363,7 +360,7 @@ def action_approve(conf_id, user_id, tier):
 def action_revoke(user_id):
     user = current_user()
     if not user or user.username != 'admin cel': return "UNAUTHORIZED", 403
-    u = User.query.get(user_id)
+    u = db.session.get(User, user_id)
     if u:
         u.is_premium = 0
         Confirmation.query.filter_by(user_id=user_id).delete()
@@ -376,10 +373,13 @@ def action_revoke(user_id):
 @app.route('/')
 def index():
     user = current_user()
-    posts_data = db.session.query(
-        Post.id, Post.content, Post.timestamp, Post.user_id,
-        User.username, User.is_premium
-    ).join(User, Post.user_id == User.id).order_by(Post.timestamp.desc()).all()
+    try:
+        posts_data = db.session.query(
+            Post.id, Post.content, Post.timestamp, Post.user_id,
+            User.username, User.is_premium
+        ).join(User, Post.user_id == User.id).order_by(Post.timestamp.desc()).all()
+    except:
+        posts_data = []
     
     return render_template('index.html', posts=posts_data, user=user)
 
@@ -480,7 +480,8 @@ def settings():
 def profile(username):
     target = User.query.filter_by(username=username.lower().strip()).first()
     if not target: return "404: USER_NOT_FOUND", 404
-    projs = Project.query.filter_by(target.id).all()
+    # PERBAIKAN: Gunakan filter_by(user_id=target.id) bukan filter_by(target.id)
+    projs = Project.query.filter_by(user_id=target.id).all()
     return render_template('profile.html', target=target, projects=projs)
 
 # Ekspor app untuk Vercel
