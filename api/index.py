@@ -15,29 +15,29 @@ app = Flask(__name__,
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "kord_pxl_core_secure_992026_final")
 
-# --- KONFIGURASI DATABASE (FIXED FOR PG8000 & VERCEL) ---
+# --- KONFIGURASI DATABASE (OPTIMIZED FOR VERCEL & PG8000) ---
 db_url = os.getenv("DATABASE_URL")
 
 if db_url:
-    # Memastikan penggunaan driver pg8000 yang lebih kompatibel dengan serverless
+    # 1. Pastikan menggunakan postgresql+pg8000
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
-    elif db_url.startswith("postgresql://"):
+    elif db_url.startswith("postgresql://") and "+pg8000" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
-    # Menghapus parameter query (seperti ?sslmode=require) agar tidak konflik dengan driver
+    # 2. Bersihkan query strings agar tidak terjadi konflik keyword argument 'ssl'
     if "?" in db_url:
         db_url = db_url.split("?")[0]
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Konfigurasi Engine: SSL diatur di sini agar diterima pg8000 dengan benar
+# 3. Optimasi Engine Options: Menggunakan ssl=True secara eksplisit untuk pg8000
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
     "connect_args": {
-        "ssl": True  # Parameter SSL yang valid untuk pg8000
+        "ssl": True  # pg8000 menerima boolean True untuk mengaktifkan SSL
     }
 }
 
@@ -122,7 +122,7 @@ def inject_notifications():
         ai_count = AILog.query.filter(AILog.user_id == user.id, db.func.date(AILog.timestamp) == today).count()
     return dict(user=user, unread_count=unread_count, ai_count=ai_count, now=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-# --- 0. HELPER ROUTES (Pindahkan ke atas agar tidak tertabrak route /<username>) ---
+# --- 0. HELPER ROUTES ---
 @app.route('/favicon.ico')
 @app.route('/favicon.png')
 def favicon():
@@ -470,13 +470,11 @@ def settings():
 
 @app.route('/<username>')
 def profile(username):
-    # Route ini harus diletakkan paling bawah agar tidak memakan route /login, /register, dll.
     target = User.query.filter_by(username=username.lower().strip()).first()
     if not target: return "404: USER_NOT_FOUND", 404
     projs = Project.query.filter_by(user_id=target.id).all()
     return render_template('profile.html', target=target, projects=projs)
 
-# Ekspor app untuk Vercel
 app = app
 
 if __name__ == '__main__':
